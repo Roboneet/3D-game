@@ -86,10 +86,12 @@
       	var scene = new THREE.Scene();
       	var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
       	var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
-      	var mazeGrid = createMazeGrid();
+      	var mazeGrid = createMazeGrid(10,10);
+      	console.log(mazeGrid);
    		placeWallGraphics(scene, mazeGrid);
    		var collectables = createCollectiblesList();
-   		placeCollectableGraphics(scene, collectables);
+   		collectables=placeCollectableGraphics(scene, collectables);
+
 
 		var playerPointLight = new THREE.PointLight();
 		playerPointLight.position.set( 0, 0, 0 );
@@ -265,26 +267,51 @@
 		   }
 		   return false;
 		}
-	function createMazeGrid(){
+	function createMazeGrid(width, height){
 	   function MazeCell(northWall, eastWall, southWall, westWall){
 	      this.northWall = northWall;
 	      this.eastWall = eastWall;
 	      this.southWall = southWall;
 	      this.westWall = westWall;
 	   }
+		var mazeGrid = Array(height);
 
-	   var mazeGrid = [Array(2), Array(2)];
-
-	   mazeGrid[0][0] = new MazeCell(true, false, false, true);
-	   mazeGrid[0][1] = new MazeCell(true, true, true, false);
-	   mazeGrid[1][0] = new MazeCell(false, true, true, true);
-	   mazeGrid[1][1] = new MazeCell(false,false,false,false);
+		for( var i = 0; i<height; i++){
+		   var row = Array(width);
+		   for(var j = 0; j<width; j++){
+		      row[j] = new MazeCell(true,true,true,true);
+		   }
+		   mazeGrid[i] = row;
+		   
+		}
+		for( var i = 0; i<height; i++){
+		   for(var j = 0; j<width; j++){
+		      if(i>0 && j>0){ //If it is not an edge cell open a passage randomly
+		         if(Math.random()>0.5){
+		            mazeGrid[i][j].northWall=false;
+		            mazeGrid[i-1][j].southWall=false;
+		         }
+		         else{
+		            mazeGrid[i][j].westWall=false;
+		            mazeGrid[i][j-1].eastWall=false;
+		         }
+		      }
+		      else if(j > 0){ //If it is along the north edge open a west passage
+		         mazeGrid[i][j].westWall=false;
+		         mazeGrid[i][j-1].eastWall=false;
+		      }
+		      else if(i > 0){ //If it is along the west edge open a north passage
+		         mazeGrid[i][j].northWall=false;
+		         mazeGrid[i-1][j].southWall=false;
+		      }
+		   }
+		}
 
 	   return mazeGrid;
 	}
 	function placeWallGraphics(scene, mazeGrid){
 
-  		var wallGeometry = new THREE.BoxGeometry( 1, 0.5 ,0.05);
+  		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
   		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
 
@@ -298,12 +325,21 @@
 	            placeWall(colCount, rowCount, 's');
 	         if(mazeCell.westWall)
 	            placeWall(colCount, rowCount, 'w');
+	        var floorGeometry=new THREE.PlaneGeometry(1,1,0.1);
+	        const loader = new THREE.TextureLoader();
+			var floorMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://www.tonytextures.com/free-texture-gallery/stone/Stone_Texture_A_P2140754.JPG'),});
+			var floor= new THREE.Mesh(floorGeometry,floorMaterial);
+			floor.position.z=rowCount;
+			floor.position.x=colCount;
+			floor.position.y=-0.25;
+			floor.rotation.x=-Math.PI/2;
+			scene.add(floor);
 	      });
 	   });
 
    function placeWall(x,y,direction){
 	      var wall = new THREE.Mesh( wallGeometry, wallMaterial );
-	      wall.name='wall';
+	      wall.name='wall';-
 	      wall.position.z = y*1;
 	      wall.position.x = x*1;
 	      if(direction == 'n'){
@@ -337,7 +373,7 @@
 	      {
 	         x:0,
 	         y:1, 
-	         id:1,
+	         id:null,
 	         collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')}),
 	         action:function(){alert("You picked up a collectable");},
 	      });
@@ -346,7 +382,7 @@
 	      {		
 	         x:1,
 	         y:0,
-	         id:2,
+	         id:null,
 	         collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg')}),
 	         action:function(){alert("You picked up a different collectable");},
 	      });
@@ -368,14 +404,14 @@
 	      collectableObject.position.x = collectable.y;
 	      scene.add(collectableObject);
 	   });
+	   return collectables;
 	}
 
 	function processCollectableCollisions(x, y,collectables,scene){
 	   collectables.forEach(function(collectable,index){
 	      if(collectable.x == x && collectable.y == y){
 	         collectable.action(); //Run the object's event
-	         id=collectable.id;
-	         
+	         var id=collectable.id;
 	         //var collectableObject = scene.getObjectById( collectables.id );
 	         // scene.remove(collectableObject); //Remove graphics from scene
 	         collectables.splice(index,1); //Remove collectable from list
@@ -383,7 +419,6 @@
 	      var obj;
 	         scene.traverse (function (object)
 				{	
-				    
 				        if (object.id==id){
 			   				obj=object;
 			   			}
@@ -399,6 +434,6 @@
 </head>
 <body>
 <body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
-   <canvas id="mazeCanvas" width=600 height=450 />
+   <canvas id="mazeCanvas" width=1300 height=600 />
 </body>
 </html>
