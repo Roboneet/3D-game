@@ -1,20 +1,33 @@
 <html>
 <head>
-   <title>into the Maze</title>
-   <script src="js/three.min.js"></script>
-   <script>
+	<title>into the Maze</title>
+	<style>
+	*{
+		margin: 0;
+	}
+	body{
+		width: 100vw;
+		height: 100vh;
+	}
+</style>
+<script src="js/three.min.js"></script>
 
-   	var playerInput = new Object();
-   	const WAITING = 1;
+<script>
+	const MAZE_DIMS = 10;
+	var playerInput = new Object();
+	const WAITING = 1;
 	const TURNING_RIGHT = 2;
 	const TURNING_LEFT = 3;
 	var state = WAITING;
+	
 	var currentDirection = 0;
 	var turningArc = 0;
+	
 	const NORTH = 100;
 	const EAST = 101;
 	const WEST = 102;
 	const SOUTH = 103;
+	
 	var direction = NORTH;
 	const MOVING_FORWARD = 4;
 	var walkDistance = 0;
@@ -30,410 +43,431 @@
 
 	var flag=0;
 
+	/***
 
-		function doKeyDown(event){
-		   var keynum;
+	Initial function that gets called to start the game
 
-		   if(window.event){ //Browser is IE
-		      keynum = event.keyCode;
-		   }
-		   else{
-		      keynum = event.which;
-		   }
+	***/
+	function runMaze(){
+	    // get HTML canvas element and set size
+	    var mazeCanvas = document.getElementById("mazeCanvas");
+	    mazeCanvas.width = document.body.offsetWidth;
+	    mazeCanvas.height = document.body.offsetHeight;
 
-		   if(keynum == 37){
-		      playerInput.left = 1;
-		   }
-		   else if(keynum == 38){
-		      playerInput.up = 1;
-		   }
-		   else if(keynum == 39){
-		      playerInput.right = 1;
-		   }
-		   else if(keynum == 40){
-		      playerInput.down = 1;
-		   }
-		}
+	    // create scene, WEBGL renderer and camera
+	    var scene = new THREE.Scene();
+	    var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
+	    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
 
-		function doKeyUp(event){
-		   var keynum;
-		   
-		   if(window.event){ //Browser is IE
-		      keynum = event.keyCode;
-		   }
-		   else{
-		      keynum = event.which;
-		   }
+	    var mazeGrid = createMazeGrid(MAZE_DIMS,MAZE_DIMS);
+	    var collectables = createCollectiblesList();
 
-		   if(keynum == 37){
-		      playerInput.left = 0;
-		   }
-		   else if(keynum == 38){
-		      playerInput.up = 0;
-		   }
-		   else if(keynum == 39){
-		      playerInput.right = 0;
-		   }
-		   else if(keynum == 40){
-		      playerInput.down = 0;
-		   }
-		}
-      
+	    placeWallGraphics(scene, mazeGrid);
+	    collectables=placeCollectableGraphics(scene, collectables);
 
-      function runMaze()
-      {
-      	var mazeCanvas = document.getElementById("mazeCanvas");
-      	var scene = new THREE.Scene();
-      	var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
-      	var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
-      	var mazeGrid = createMazeGrid(10,10);
-      	console.log(mazeGrid);
-   		placeWallGraphics(scene, mazeGrid);
-   		var collectables = createCollectiblesList();
-   		collectables=placeCollectableGraphics(scene, collectables);
+	   	// create Light source
+	   	var playerPointLight = new THREE.PointLight();
+	   	playerPointLight.position.set( 0, 0, 0 );
+	   	scene.add( playerPointLight );
 
+	   	var render = function () {
+	   		var now = Date.now();
+	   		var deltaTime = now - last_update;
+	   		last_update = now;
 
-		var playerPointLight = new THREE.PointLight();
-		playerPointLight.position.set( 0, 0, 0 );
-		scene.add( playerPointLight );
-
-
-		var render = function () {
-			var now = Date.now();
-			var deltaTime = now - last_update;
-			last_update = now;
-		   requestAnimationFrame( render );
-
-		   
-		if(state == WAITING){
-		   if(playerInput.left){
-			   state = TURNING_LEFT;
-			   switch(direction){
-			      case NORTH:
-			         direction = WEST;
-			         break;
-			      case EAST:
-			         direction = NORTH;
-			         break;
-			      case SOUTH:
-			         direction = EAST;
-			         break;
-			      case WEST:
-			         direction = SOUTH;
-			         break;
-			   }
-			   player.direction = direction; //Sync player and camera
+	   		
+			if(state == WAITING){  // waiting for user input
+				   // if player has given an input, make a move
+				if(playerInput.left){
+				   	state = TURNING_LEFT;
+				   	switch(direction){
+				   		case NORTH:
+				   		direction = WEST;
+				   		break;
+				   		case EAST:
+				   		direction = NORTH;
+				   		break;
+				   		case SOUTH:
+				   		direction = EAST;
+				   		break;
+				   		case WEST:
+				   		direction = SOUTH;
+				   		break;
+				   	}
+					   player.direction = direction; //Sync player and camera
+				}
+				else if(playerInput.right){
+					state = TURNING_RIGHT;
+					switch(direction){
+						case NORTH:
+						direction = EAST;
+						break;
+						case EAST:
+						direction = SOUTH;
+						break;
+						case SOUTH:
+						direction = WEST;
+						break;
+						case WEST:
+						direction = NORTH;
+						break;
+					}
+				   player.direction = direction; //Sync player and camera
+				}
+				else if (playerInput.up ){
+					if(validMove(mazeGrid, player.gridX, player.gridY, player.direction)){
+						walkingDistance = 0;
+						startX = camera.position.x;
+						startZ = camera.position.z;
+						state = MOVING_FORWARD;
+						switch(direction){
+							case NORTH:
+							player.gridX--;
+							break;
+							case EAST:
+							player.gridY++;
+							break;
+							case SOUTH:
+							player.gridX++;
+							break;
+							case WEST:
+							player.gridY--;
+							break;
+						}
+					}else{
+						// shake animation 
+					}
+				}
 			}
-			else if(playerInput.right){
-			   state = TURNING_RIGHT;
-			   switch(direction){
-			      case NORTH:
-			         direction = EAST;
-			         break;
-			      case EAST:
-			         direction = SOUTH;
-			         break;
-			      case SOUTH:
-			         direction = WEST;
-			         break;
-			      case WEST:
-			         direction = NORTH;
-			         break;
-			   }
-			   player.direction = direction; //Sync player and camera
-			 }
-			 else if (playerInput.up && validMove(mazeGrid, player.gridX, player.gridY, player.direction)){
-			   walkingDistance = 0;
-			   startX = camera.position.x;
-			   startZ = camera.position.z;
-			   state = MOVING_FORWARD;
-			   switch(direction){
-			      case NORTH:
-			         player.gridX--;
-			         break;
-			      case EAST:
-			         player.gridY++;
-			         break;
-			      case SOUTH:
-			         player.gridX++;
-			         break;
-			      case WEST:
-			         player.gridY--;
-			         break;
-			   }
-			 }
-		}
-		if(state == TURNING_LEFT){
-		   turningArc += Math.PI/2  * deltaTime/1000;
-		   if(turningArc >= Math.PI/2){
-		      turningArc = Math.PI/2;
-		      currentDirection = currentDirection + turningArc;
-		      turningArc = 0;
-		      state = WAITING;
-		   }
-		   
-		   camera.rotation.y = currentDirection + turningArc;
-		}
+			if(state == TURNING_LEFT){
+				turningArc += Math.PI/2  * deltaTime/1000;
+				if(turningArc >= Math.PI/2){
+					turningArc = Math.PI/2;
+					currentDirection = currentDirection + turningArc;
+					turningArc = 0;
+					state = WAITING;
+				}
 
-		if(state == TURNING_RIGHT){
-		   turningArc += Math.PI/2  * deltaTime/1000;
-		   if(turningArc >= Math.PI/2){
-		      turningArc = Math.PI/2;
-		      currentDirection = currentDirection - turningArc;
-		      turningArc = 0;
-		      state = WAITING;
-		   }
+				camera.rotation.y = currentDirection + turningArc;
+			}
 
-		   camera.rotation.y = currentDirection - turningArc;
-		}
+			if(state == TURNING_RIGHT){
+				turningArc += Math.PI/2  * deltaTime/1000;
+				if(turningArc >= Math.PI/2){
+					turningArc = Math.PI/2;
+					currentDirection = currentDirection - turningArc;
+					turningArc = 0;
+					state = WAITING;
+				}
 
-		if(state == MOVING_FORWARD)
-		{
+				camera.rotation.y = currentDirection - turningArc;
+			}
 
-		    walkingDistance += 1 * deltaTime/1000;
+			if(state == MOVING_FORWARD)
+			{
 
-		   if(walkingDistance >= 1){
-		      walkingDistance = 1;
-		      state = WAITING;
-		      collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
-		   }
+				walkingDistance += 1 * deltaTime/1000;
+				if(walkingDistance >= 1){
+					walkingDistance = 1;
+					state = WAITING;
+					collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
+				}
+				switch(direction){
+					case NORTH:
+					camera.position.z = startZ - walkingDistance;
+					break;
+					case EAST:
+					camera.position.x = startX + walkingDistance;
+					break;
+					case SOUTH:
+					camera.position.z = startZ + walkingDistance;
+					break;
+					case WEST:
+					camera.position.x = startX - walkingDistance;
+					break;
+				}
+				playerPointLight.position.x = camera.position.x;
+				playerPointLight.position.y = camera.position.y;
+				playerPointLight.position.z = camera.position.z;
+				// 	collectables.forEach(function(collectable){
+					
+				//    var collectableObject = scene.getObjectById( collectables.id);
+				//    if (flag++<10) console.log(collectableObject.id);
+				//    collectableObject.rotation.x += 2 * deltaTime/1000;
+				//    collectableObject.rotation.y += 2 * deltaTime/1000;
 
-		   switch(direction){
-		      case NORTH:
-		         camera.position.z = startZ - walkingDistance;
-		         break;
-		      case EAST:
-		         camera.position.x = startX + walkingDistance;
-		         break;
-		      case SOUTH:
-		         camera.position.z = startZ + walkingDistance;
-		         break;
-		      case WEST:
-		         camera.position.x = startX - walkingDistance;
-		         break;
-		   }
-		   playerPointLight.position.x = camera.position.x;
-			playerPointLight.position.y = camera.position.y;
-			playerPointLight.position.z = camera.position.z;
-		// 	collectables.forEach(function(collectable){
-			
-		//    var collectableObject = scene.getObjectById( collectables.id);
-		//    if (flag++<10) console.log(collectableObject.id);
-		//    collectableObject.rotation.x += 2 * deltaTime/1000;
-		//    collectableObject.rotation.y += 2 * deltaTime/1000;
-		   
-		// });
-			
+				// });
+			}
 
+			scene.traverse (function (object){	
+				if (object.name==='collect'){
+					object.rotation.x += 2 * deltaTime/1000;
+					object.rotation.y += 2 * deltaTime/1000;
+				}
 
-		}
-
-			scene.traverse (function (object)
-			{	
-			    
-			        if (object.name==='collect'){
-			            object.rotation.x += 2 * deltaTime/1000;
-		   				object.rotation.y += 2 * deltaTime/1000;}
-		   
 			});
-
-		   renderer.render(scene, camera);
+			renderer.render(scene, camera);
+			// recursive call [ call when js animation micro-calls are done]
+			requestAnimationFrame( render );
 		};
 
-
-
-		
 		render();
+	}
 
-      }
-
-
+	// check if move is
 	function validMove(mazeGrid, x, y, direction){
-		   if(direction == NORTH)
-		   {
-		      return !mazeGrid[x][y].northWall;
-		   }
-		   else if(direction == EAST)
-		   {
-		      return !mazeGrid[x][y].eastWall;
-		   }
-		   else if(direction == SOUTH)
-		   {
-		      return !mazeGrid[x][y].southWall;
-		   }
-		   else if(direction == WEST)
-		   {
-		      return !mazeGrid[x][y].westWall;
-		   }
-		   return false;
+		if(direction == NORTH)
+		{
+			return !mazeGrid[x][y].northWall;
 		}
+		else if(direction == EAST)
+		{
+			return !mazeGrid[x][y].eastWall;
+		}
+		else if(direction == SOUTH)
+		{
+			return !mazeGrid[x][y].southWall;
+		}
+		else if(direction == WEST)
+		{
+			return !mazeGrid[x][y].westWall;
+		}
+		return false;
+	}
+
+
+	// create maze
 	function createMazeGrid(width, height){
-	   function MazeCell(northWall, eastWall, southWall, westWall){
-	      this.northWall = northWall;
-	      this.eastWall = eastWall;
-	      this.southWall = southWall;
-	      this.westWall = westWall;
-	   }
+		function MazeCell(northWall, eastWall, southWall, westWall){
+			this.northWall = northWall;
+			this.eastWall = eastWall;
+			this.southWall = southWall;
+			this.westWall = westWall;
+		}
+		MazeCell.prototype.print = function() {
+			// var str = "";
+			var str = ["   ", "    ", "   "];
+			if(this.northWall){
+				str[0] = " -- ";
+			}
+
+			if(this.westWall){
+				str[1] = "|" + str[1].slice(1);
+				console.log(str[1])
+			}
+
+			if(this.eastWall){
+				str[1] =  str[1].slice(0, 3) + "|";
+				// str[1][3] += '|';
+			}
+			
+			if(this.southWall){
+				str[2] = " -- ";
+			}
+			
+			return str;
+		};
 		var mazeGrid = Array(height);
 
 		for( var i = 0; i<height; i++){
-		   var row = Array(width);
-		   for(var j = 0; j<width; j++){
-		      row[j] = new MazeCell(true,true,true,true);
-		   }
-		   mazeGrid[i] = row;
-		   
+			var row = Array(width);
+			for(var j = 0; j<width; j++){
+				row[j] = new MazeCell(true,true,true,true);
+			}
+			mazeGrid[i] = row;
+
 		}
 		for( var i = 0; i<height; i++){
-		   for(var j = 0; j<width; j++){
+			for(var j = 0; j<width; j++){
 		      if(i>0 && j>0){ //If it is not an edge cell open a passage randomly
-		         if(Math.random()>0.5){
-		            mazeGrid[i][j].northWall=false;
-		            mazeGrid[i-1][j].southWall=false;
-		         }
-		         else{
-		            mazeGrid[i][j].westWall=false;
-		            mazeGrid[i][j-1].eastWall=false;
-		         }
+		      	if(Math.random()>0.5){
+		      		mazeGrid[i][j].northWall=false;
+		      		mazeGrid[i-1][j].southWall=false;
+		      	}
+		      	else{
+		      		mazeGrid[i][j].westWall=false;
+		      		mazeGrid[i][j-1].eastWall=false;
+		      	}
 		      }
 		      else if(j > 0){ //If it is along the north edge open a west passage
-		         mazeGrid[i][j].westWall=false;
-		         mazeGrid[i][j-1].eastWall=false;
+		      	mazeGrid[i][j].westWall=false;
+		      	mazeGrid[i][j-1].eastWall=false;
 		      }
 		      else if(i > 0){ //If it is along the west edge open a north passage
-		         mazeGrid[i][j].northWall=false;
-		         mazeGrid[i-1][j].southWall=false;
+		      	mazeGrid[i][j].northWall=false;
+		      	mazeGrid[i-1][j].southWall=false;
 		      }
-		   }
+		  }
 		}
+		
+		console.log(mazeGrid.map(row=> row.map(cell=> cell.print()).reduce((acc, ele) => {
+			ele.forEach((e, i) => acc[i] += e);
+			return acc;
+		}, ["", "", ""])));
 
-	   return mazeGrid;
+		return mazeGrid;
 	}
+
+
+	// place wall graphics on screen
 	function placeWallGraphics(scene, mazeGrid){
 
-  		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
-  		const loader = new THREE.TextureLoader();
+		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
+		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
 
-	   mazeGrid.forEach(function(mazeRow, rowCount){
-	      mazeRow.forEach(function(mazeCell, colCount){
-	         if(mazeCell.northWall)
-	           placeWall(colCount, rowCount, 'n');
-	         if(mazeCell.eastWall)
-	           placeWall(colCount, rowCount, 'e');
-	         if(mazeCell.southWall)
-	            placeWall(colCount, rowCount, 's');
-	         if(mazeCell.westWall)
-	            placeWall(colCount, rowCount, 'w');
-	        var floorGeometry=new THREE.PlaneGeometry(1,1,0.1);
-	        const loader = new THREE.TextureLoader();
-			var floorMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://www.tonytextures.com/free-texture-gallery/stone/Stone_Texture_A_P2140754.JPG'),});
-			var floor= new THREE.Mesh(floorGeometry,floorMaterial);
-			floor.position.z=rowCount;
-			floor.position.x=colCount;
-			floor.position.y=-0.25;
-			floor.rotation.x=-Math.PI/2;
-			scene.add(floor);
-	      });
-	   });
+		mazeGrid.forEach(function(mazeRow, rowCount){
+			mazeRow.forEach(function(mazeCell, colCount){
+				if(mazeCell.northWall)
+					placeWall(colCount, rowCount, 'n');
+				if(mazeCell.eastWall)
+					placeWall(colCount, rowCount, 'e');
+				if(mazeCell.southWall)
+					placeWall(colCount, rowCount, 's');
+				if(mazeCell.westWall)
+					placeWall(colCount, rowCount, 'w');
+				var floorGeometry=new THREE.PlaneGeometry(1,1,0.1);
+				const loader = new THREE.TextureLoader();
+				var floorMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://www.tonytextures.com/free-texture-gallery/stone/Stone_Texture_A_P2140754.JPG'),});
+				var floor= new THREE.Mesh(floorGeometry,floorMaterial);
+				floor.position.z=rowCount;
+				floor.position.x=colCount;
+				floor.position.y=-0.25;
+				floor.rotation.x=-Math.PI/2;
+				scene.add(floor);
+			});
+		});
 
-   function placeWall(x,y,direction){
-	      var wall = new THREE.Mesh( wallGeometry, wallMaterial );
-	      wall.name='wall';-
-	      wall.position.z = y*1;
-	      wall.position.x = x*1;
-	      if(direction == 'n'){
-	         wall.position.z -= 0.5;
-	      }
-	      else if(direction == 'e'){
-	         wall.position.x += 0.5;
-	         wall.rotation.y = -Math.PI/2;
-	      }
-	      else if(direction == 's'){
-	         wall.position.z += 0.5;
-	         wall.rotation.y = Math.PI;
-	      }
-	      else if(direction == 'w'){
-	         wall.position.x -= 0.5;
-	         wall.rotation.y = Math.PI/2;
-	      }
-	      else{
-	         return false;
-	      }
+		function placeWall(x,y,direction){
+			var wall = new THREE.Mesh( wallGeometry, wallMaterial );
+			wall.name='wall';
+			wall.position.z = y*1;
+			wall.position.x = x*1;
+			if(direction == 'n'){
+				wall.position.z -= 0.5;
+			}
+			else if(direction == 'e'){
+				wall.position.x += 0.5;
+				wall.rotation.y = -Math.PI/2;
+			}
+			else if(direction == 's'){
+				wall.position.z += 0.5;
+				wall.rotation.y = Math.PI;
+			}
+			else if(direction == 'w'){
+				wall.position.x -= 0.5;
+				wall.rotation.y = Math.PI/2;
+			}
+			else{
+				return false;
+			}
 
-	      scene.add(wall);
-	   }
+			scene.add(wall);
+		}
 	}
 
+	// Collectable object constructor
+	function Collectable(x, y, id, url, loader, score){
+		this.x = x;
+		this.y = y;
+		this.id = id;
+		this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
+		this.score = score;
+	}
 
+	Collectable.prototype.action = function() {
+		console.log(this);
+		alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
+
+	};
+
+	// create collectables
 	function createCollectiblesList(){
-	   var collectables = [];
-	   const loader = new THREE.TextureLoader();
-	   collectables.push(
-	      {
-	         x:0,
-	         y:1, 
-	         id:null,
-	         collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')}),
-	         action:function(){alert("You picked up a collectable");},
-	      });
+		var materials = ['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA',
+		"https://previews.123rf.com/images/iloveotto/iloveotto1703/iloveotto170301151/73964767-brown-antique-wall-materials-textures.jpg",
+		"https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg", 
+		'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg', 
+		"https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
+		"https://www.sketchuptextureclub.com/public/texture_m/0002-light-pink-velvet-fabric-texture-seamless.jpg"
+		]
+		
+		const loader = new THREE.TextureLoader();
+		var rand_num = function(upper){
+			return Math.floor(Math.random()*(upper + 1));
+		}
 
-	   collectables.push(
-	      {		
-	         x:1,
-	         y:0,
-	         id:null,
-	         collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg')}),
-	         action:function(){alert("You picked up a different collectable");},
-	      });
+		var collectables = materials.map((url, index) =>{
+			return new Collectable(rand_num(10), rand_num(10), index, url, loader, rand_num(100));
+		});
 
-	   return collectables;
+		// collectables.push(
+		// {
+		// 	x:0,
+		// 	y:1, 
+		// 	id:null,
+		// 	collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')}),
+		// 	action:function(){alert("You picked up a collectable");console.log(arguments)},
+		// });
+
+		// collectables.push(
+		// {		
+		// 	x:1,
+		// 	y:0,
+		// 	id:null,
+		// 	collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg')}),
+		// 	action:function(){alert("You picked up a different collectable"); console.log(arguments)},
+		// });
+
+		return collectables;
 	}
 
 
+	// place collectable graphics on screen
 	function placeCollectableGraphics(scene, collectables){
-	   var collectableGeometry = new THREE.BoxGeometry( 0.25, 0.25, 0.25 );
+		var collectableGeometry = new THREE.BoxGeometry( 0.25, 0.25, 0.25 );
 	   //const loader = new THREE.TextureLoader();
 	   // var collectableMaterial= new THREE.MeshPhongMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')});
 	   //var collectableMaterial=new THREE.MeshStandardMaterial({color:"red"});
 	   collectables.forEach(function(collectable){
-	      var collectableObject = new THREE.Mesh(collectableGeometry,collectable.collectableMaterial);
-	      collectable.id=collectableObject.id;
-	      collectableObject.name='collect';
-	      collectableObject.position.z = collectable.x;
-	      collectableObject.position.x = collectable.y;
-	      scene.add(collectableObject);
+	   	var collectableObject = new THREE.Mesh(collectableGeometry,collectable.collectableMaterial);
+	   	collectable.id=collectableObject.id;
+	   	collectableObject.name='collect';
+	   	collectableObject.position.z = collectable.x;
+	   	collectableObject.position.x = collectable.y;
+	   	scene.add(collectableObject);
 	   });
 	   return collectables;
 	}
 
+
+	// call if any collectible collided
 	function processCollectableCollisions(x, y,collectables,scene){
-	   collectables.forEach(function(collectable,index){
-	      if(collectable.x == x && collectable.y == y){
+		collectables.forEach(function(collectable,index){
+			if(collectable.x == x && collectable.y == y){
 	         collectable.action(); //Run the object's event
 	         var id=collectable.id;
 	         //var collectableObject = scene.getObjectById( collectables.id );
 	         // scene.remove(collectableObject); //Remove graphics from scene
 	         collectables.splice(index,1); //Remove collectable from list
-	      }
-	      var obj;
-	         scene.traverse (function (object)
-				{	
-				        if (object.id==id){
-			   				obj=object;
-			   			}
-			   
-				});
-	         scene.remove(obj);
-	   });
-	   return collectables;
+	    	}
+		    var obj;
+		    scene.traverse(function (object){	
+		     	if (object.id==id){
+		     		obj=object;
+		     	}
+		     });
+	    	scene.remove(obj);
+	 	});
+		return collectables;
 	}
 
-      
-   </script>
+
+</script>
+
+<script src="js/utility.js"></script>
 </head>
 <body>
-<body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
-   <canvas id="mazeCanvas" width=1300 height=600 />
-</body>
-</html>
+	<body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
+		<canvas id="mazeCanvas" width=1300 height=600 />
+	</body>
+	</html>
