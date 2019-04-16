@@ -13,8 +13,8 @@
 		position: absolute;
 	    right: 0;
 	    top: 0;
-	    background: #333;
-	    opacity: 0.7;
+	    background: #000;
+		opacity: 0.95;
 	    width: 200px;
 	    height: 70px;
 	    border-bottom-left-radius: 6px;
@@ -38,6 +38,46 @@
 		font-variant: small-caps;
 		padding: 3px 6px;
 
+	}
+
+	div#inventory{
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		display: flex;
+		border-top-right-radius: 6px;
+		background: #000;
+		opacity: 0.95;
+		border-right: 10px solid #888;
+		border-top: 10px solid #888;
+		padding: 10px;
+		width: 300px;
+		flex-wrap: wrap;
+	}
+
+	.collectable{
+		/*padding: 10px;*/
+		margin: 10px;
+		position: relative;
+		background: #000;
+		
+	}
+	.overlay{
+		position: absolute;
+		top:0;
+		left:0;
+		width: 100%;
+		height: 100%;
+		background: transparent;
+	}
+	.material img{
+		width: 50px;
+		height: 50px;
+	}
+	
+	.collectable[data-collected=false] .overlay{
+		background: #000;
+		opacity: 0.95;
 	}
 
 </style>
@@ -93,15 +133,12 @@
 	    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
 
 	    var mazeGrid = createMazeGrid(MAZE_DIMS,MAZE_DIMS);
-	    
+	 	placeWallGraphics(scene, mazeGrid);	    
 
 	    var collectables = createCollectiblesList();
-	    var inventory = new Inventory(collectables);
-	    var score_man = new ScoreManager($$("#score p"), collectables);
-
-
-	    placeWallGraphics(scene, mazeGrid);
 	    collectables=placeCollectableGraphics(scene, collectables);
+	    var inventory = new Inventory($$("#inventory"), collectables);
+	    var score_man = new ScoreManager($$("#score p"), collectables);
 
 	   	// create Light source
 	   	var playerPointLight = new THREE.PointLight();
@@ -419,12 +456,33 @@
 		this.ele.innerText = this.score;
 	}
 
-	function Inventory(collectables){
+	function Inventory(container, collectables){
 		this.collectables = collectables;
-		this.collectables.forEach(m => m.hook(this.notification.bind(this)))
+		this.collectables.forEach(m => m.hook(this.notification.bind(this)));
+		this.panel = {};
+		var scope = this;
+		this.collectables.map(ele => {
+			var o = scope.createDisplay(ele);
+			this.panel[ele.id] = o;
+			return o;
+		}).forEach(ele => {
+			container.appendChild(ele);
+		})
+
 	}
+	Inventory.prototype.createDisplay = function(obj){
+		var {id, url, collected} = obj;
+		var d = document.createElement("div");
+		d.className = "collectable";
+		d.setAttribute('data-collected', collected);
+		d.innerHTML = ('<div class="overlay"></div>' +
+		'<div class="material"><img src="' + url + '"></div>');
+		return d;
+	}
+
 	Inventory.prototype.notification = function(collectable){
 		console.log("Inventory says ", collectable, "is collected");
+		this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
 	}
 
 
@@ -433,6 +491,7 @@
 		this.x = x;
 		this.y = y;
 		this.id = id;
+		this.url = url;
 		this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
 		this.score = score;
 		this.collected = false;
@@ -442,7 +501,7 @@
 	Collectable.prototype.action = function() {
 		console.log(this);
 		this.collected = true;
-		alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
+		// alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
 		this.subjects.forEach(f => f(this));
 	};
 
@@ -457,7 +516,7 @@
 		"https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg", 
 		'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg', 
 		"https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
-		"https://www.sketchuptextureclub.com/public/texture_m/0002-light-pink-velvet-fabric-texture-seamless.jpg"
+		"https://www.sketchuptextureclub.com/public/texture_f/texture-wrinkled-paper-seamless.jpg"
 		]
 		
 		const loader = new THREE.TextureLoader();
@@ -537,7 +596,7 @@
 </head>
 <body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
 	<div id="score"><span>Score</span><p></p></div>
-	<canvas id="mazeCanvas" width=1300 height=600 />
+	<canvas id="mazeCanvas" width=1300 height=600></canvas>
 	<div id="inventory"></div>
 </body>
 </html>
