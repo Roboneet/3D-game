@@ -9,6 +9,37 @@
 		width: 100vw;
 		height: 100vh;
 	}
+	div#score{
+		position: absolute;
+	    right: 0;
+	    top: 0;
+	    background: #333;
+	    opacity: 0.7;
+	    width: 200px;
+	    height: 70px;
+	    border-bottom-left-radius: 6px;
+	    border-left: 10px solid #888;
+	    border-bottom: 10px solid #888;
+	    color: #88ff64;
+	    text-align: center;
+	    vertical-align: middle;
+	    /* justify-content: center; */
+	    display: flex;
+	    justify-content: center;
+	    align-items: center;
+	    font-size: 2em;
+	    font-family: monospace;
+	}
+	div#score span{
+		position: absolute;
+		top:0;
+		left: 0;
+		font-size: 0.75em;
+		font-variant: small-caps;
+		padding: 3px 6px;
+
+	}
+
 </style>
 <script src="js/three.min.js"></script>
 
@@ -48,6 +79,8 @@
 	Initial function that gets called to start the game
 
 	***/
+
+	var $$ = (e) => document.querySelector(e);
 	function runMaze(){
 	    // get HTML canvas element and set size
 	    var mazeCanvas = document.getElementById("mazeCanvas");
@@ -60,7 +93,12 @@
 	    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
 
 	    var mazeGrid = createMazeGrid(MAZE_DIMS,MAZE_DIMS);
+	    
+
 	    var collectables = createCollectiblesList();
+	    var inventory = new Inventory(collectables);
+	    var score_man = new ScoreManager($$("#score p"), collectables);
+
 
 	    placeWallGraphics(scene, mazeGrid);
 	    collectables=placeCollectableGraphics(scene, collectables);
@@ -365,6 +403,30 @@
 			scene.add(wall);
 		}
 	}
+	function ScoreManager(ele, collectables){
+		collectables.forEach(m => m.hook(this.notification.bind(this)))
+		this.ele = ele;
+		this.update(0);
+	}
+
+	ScoreManager.prototype.notification = function(collectable){
+		this.update(this.score + collectable.score);
+		console.log("ScoreManager says  score is ", this.score);
+	}
+
+	ScoreManager.prototype.update = function(n){
+		this.score = n;
+		this.ele.innerText = this.score;
+	}
+
+	function Inventory(collectables){
+		this.collectables = collectables;
+		this.collectables.forEach(m => m.hook(this.notification.bind(this)))
+	}
+	Inventory.prototype.notification = function(collectable){
+		console.log("Inventory says ", collectable, "is collected");
+	}
+
 
 	// Collectable object constructor
 	function Collectable(x, y, id, url, loader, score){
@@ -373,13 +435,20 @@
 		this.id = id;
 		this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
 		this.score = score;
+		this.collected = false;
+		this.subjects = [];
 	}
 
 	Collectable.prototype.action = function() {
 		console.log(this);
+		this.collected = true;
 		alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
-
+		this.subjects.forEach(f => f(this));
 	};
+
+	Collectable.prototype.hook = function(f){
+		this.subjects.push(f);
+	}
 
 	// create collectables
 	function createCollectiblesList(){
@@ -466,8 +535,9 @@
 
 <script src="js/utility.js"></script>
 </head>
-<body>
-	<body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
-		<canvas id="mazeCanvas" width=1300 height=600 />
-	</body>
-	</html>
+<body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
+	<div id="score"><span>Score</span><p></p></div>
+	<canvas id="mazeCanvas" width=1300 height=600 />
+	<div id="inventory"></div>
+</body>
+</html>
