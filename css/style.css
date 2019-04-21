@@ -1,0 +1,154 @@
+*{
+	margin: 0;
+	transition: all 0.4s linear;
+}
+body{
+	width: 100vw;
+	height: 100vh;
+}
+div#score{
+	position: absolute;
+    right: 0;
+    top: 0;
+    background: #000;
+	opacity: 0.95;
+    width: 200px;
+    height: 70px;
+    border-bottom-left-radius: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 5px solid #fff;
+    color: #88ff64;
+    text-align: center;
+    vertical-align: middle;
+    /* justify-content: center; */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    font-family: monospace;
+}
+div#score span{
+	position: absolute;
+	top:0;
+	left: 0;
+	font-size: 0.75em;
+	font-variant: small-caps;
+	padding: 3px 6px;
+
+}
+
+/*div#inventory.active{
+	bottom: 0;
+	right: 0;
+}*/
+
+div#inventory{
+	position: absolute;
+	bottom: 0%;
+	right: 0%;
+	display: flex;
+	border-top-left-radius: 6px;
+	background: #000;
+	opacity: 0.95;
+	border-left: 2px solid #fff;
+	border-top: 2px solid #fff;
+	padding: 10px;
+	/*width: 300px;*/
+	flex-wrap: wrap;
+	/*width: fit-content;*/
+	transition: all 1s linear;
+}
+
+.collectable{
+	/*padding: 10px;*/
+	margin: 10px;
+	position: relative;
+	background: #000;
+	
+}
+.overlay{
+	position: absolute;
+	top:0;
+	right:0;
+	
+	background: transparent;
+	font-size: 0;
+}
+.material img{
+	width: 50px;
+	height: 50px;
+}
+
+.collectable[data-collected=false] .overlay{
+	background: #000;
+	opacity: 0.95;
+	border: 1px solid #88ff64;
+	color: #ddd;
+    font-family: monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.1em;
+    width: 100%;
+	height: 100%;
+}
+
+.key{
+	background: #fff;
+    /*border: 2px solid #f00; */
+    border-radius: 50%;
+}
+
+.key .overlay{
+	border-color: #f00 !important;
+	border-radius: 50%;
+}
+
+.key .overlay{
+	transition: all 1s linear;
+	
+}
+
+.box-cont{
+	position: absolute;
+    display: flex;
+    -webkit-justify-content: center;
+    justify-content: center;
+    align-items: center;
+    background: #000;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    color: #88ff64;
+    opacity: 1;
+    transition: all 1s linear;
+}
+
+.box-cont.fade-out{
+	opacity: 0;
+}
+
+.box{
+	/* border: 1px solid #fff; */
+    font-family: arial;
+    padding: 10px;
+    border-radius: 6px;
+}
+.box .options{
+	display: flex;
+	-webkit-justify-content: space-evenly;
+	        justify-content: space-evenly;
+}
+
+.box .options *{
+	margin: 10px;
+    /* border: 1px solid #fff; */
+    padding: 10px;
+    border-radius: 3px;
+    transition: all 1s linear;
+}
+
+.box .option:hover{
+	background: #3c3c3c;
+}	

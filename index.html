@@ -1,451 +1,323 @@
 <html>
 <head>
 	<title>into the Maze</title>
-	<style>
-	*{
-		margin: 0;
-	}
-	body{
-		width: 100vw;
-		height: 100vh;
-	}
-	div#score{
-		position: absolute;
-	    right: 0;
-	    top: 0;
-	    background: #000;
-		opacity: 0.95;
-	    width: 200px;
-	    height: 70px;
-	    border-bottom-left-radius: 6px;
-	    border-left: 2px solid #fff;
-	    border-bottom: 5px solid #fff;
-	    color: #88ff64;
-	    text-align: center;
-	    vertical-align: middle;
-	    /* justify-content: center; */
-	    display: flex;
-	    justify-content: center;
-	    align-items: center;
-	    font-size: 2em;
-	    font-family: monospace;
-	}
-	div#score span{
-		position: absolute;
-		top:0;
-		left: 0;
-		font-size: 0.75em;
-		font-variant: small-caps;
-		padding: 3px 6px;
-
-	}
-
-	div#inventory{
-		position: absolute;
-		bottom: 0;
-		right: 0;
-		display: flex;
-		border-top-left-radius: 6px;
-		background: #000;
-		opacity: 0.95;
-		border-left: 2px solid #fff;
-		border-top: 2px solid #fff;
-		padding: 10px;
-		/*width: 300px;*/
-		flex-wrap: wrap;
-	}
-
-	.collectable{
-		/*padding: 10px;*/
-		margin: 10px;
-		position: relative;
-		background: #000;
-		
-	}
-	.overlay{
-		position: absolute;
-		top:0;
-		left:0;
-		width: 100%;
-		height: 100%;
-		background: transparent;
-		font-size: 0;
-	}
-	.material img{
-		width: 50px;
-		height: 50px;
-	}
-
-	.collectable[data-collected=false] .overlay{
-		background: #000;
-		opacity: 0.95;
-		border: 1px solid #88ff64;
-		color: #ddd;
-	    font-family: monospace;
-	    display: flex;
-	    justify-content: center;
-	    align-items: center;
-	    font-size: 1.1em;
-	}
-
-	.key{
-		background: #fff;
-	    /*border: 2px solid #f00; */
-	    border-radius: 50%;
-	}
-
-	.key .overlay{
-		border-color: #f00 !important;
-		border-radius: 50%;
-	}
-
-	.key .overlay{
-		transition: all 1s linear;
-		
-	}
-
-	.box-cont{
-		position: absolute;
-	    display: flex;
-	    -webkit-justify-content: center;
-	    justify-content: center;
-	    align-items: center;
-	    background: #000;
-	    top: 0;
-	    left: 0;
-	    width: 100vw;
-	    height: 100vh;
-	    color: #88ff64;
-	    opacity: 1;
-	    transition: all 1s linear;
-	}
-
-	.box-cont.fade-out{
-		opacity: 0;
-	}
-
-	.box{
-		/* border: 1px solid #fff; */
-	    font-family: arial;
-	    padding: 10px;
-	    border-radius: 6px;
-	}
-	.box .options{
-		display: flex;
-		-webkit-justify-content: space-evenly;
-		        justify-content: space-evenly;
-	}
-
-	.box .options *{
-		margin: 10px;
-	    /* border: 1px solid #fff; */
-	    padding: 10px;
-	    border-radius: 3px;
-	    transition: all 1s linear;
-	}
-
-	.box .option:hover{
-		background: #3c3c3c;
-	}	
-
-</style>
-<script src="js/three.min.js"></script>
+	<link rel="stylesheet" href="./css/style.css" />
+	<script src="js/three.min.js"></script>
 
 <script>
+	// to select elements from html
+	var $$ = (e) => document.querySelector(e);
+	function addClass(ele, name){
+		if(ele.match(name) == null)
+			ele.className += (" " + name);
+	}
+	function removeClass(ele, name){
+		if(ele.match(name) == null)
+			ele.className += (" " + name);
+	}
+
+	// GAME CONSTANTS
 	const MAZE_DIMS = 10;
-	var playerInput = new Object();
+	
 	const WAITING = 1;
 	const TURNING_RIGHT = 2;
 	const TURNING_LEFT = 3;
 	const MOVING_FORWARD = 4;
 	const FADING = 12;
 	const DONE = 11;
-	var state = WAITING;
-	
-	var currentDirection = 0;
-	var turningArc = 0;
-	
+
 	const NORTH = 100;
 	const EAST = 101;
 	const WEST = 102;
 	const SOUTH = 103;
-	
-	var direction = NORTH;
-	
-	var walkDistance = 0;
-	var startX = 0;
-	var startZ = 0;
 
-	var last_update = Date.now();
+	var playerInput;
+	var t = null;
+	var game = (function(){
+		playerInput = new Object();
+		var state = WAITING;	
+		var currentDirection = 0;
+		var turningArc = 0;
+		var direction = NORTH;
+		var walkDistance = 0;
+		var startX = 0;
+		var startZ = 0;
+		var last_update = Date.now();
+		var flag=0;
+		var stop_render = false;
+
+		var player = {};
+		player.gridX = 0;
+		player.gridY = 0;
+		player.direction = NORTH;
 
 
-	var player = {};
-	player.gridX = 0;
-	player.gridY = 0;
-	player.direction = NORTH;
+		/***
 
-	var flag=0;
+		Initial function that gets called to start the game
 
-	var d;
-	function createDoor(scene){
-		var size = (x) => [x, 2*x];
-		var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
-		// scene.add(doorGeometry);
+		***/
 
-		const loader = new THREE.TextureLoader();
-		var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
-		var door = new THREE.Mesh(doorGeometry,doorMaterial);
-		door.position.z=-0.465;
-		door.position.x=-0.3;
-		door.position.y=0;
-		d = door;
-		// door.rotation.x=Math.PI/2;
-		scene.add(door);
-	}
-
-	function displayMessage(str, ...options){
-		var div = () => document.createElement('div');
-		var container = div();
-		container.className = "box-cont";
-		var box = div();
-		box.className = "box";
 		
-		var optionDiv = div();
-		optionDiv.className = "options";
-		options.forEach(([name, handler]) => {
-			var d = div();
-			d.className = "option";
-			d.innerText = name;
-			d.addEventListener('click', () => {
-				container.className += " fade-out";
-				setTimeout( () => {
-					container.remove();
-					handler();
-				}, 800);
-			});
-			optionDiv.appendChild(d)
-		})
-		var msgDiv = div();
-		msgDiv.className = "message";
-		msgDiv.innerHTML = '<p>' + str + '</p>';
-		box.appendChild(msgDiv);
-		box.appendChild(optionDiv);
-		container.appendChild(box);
-		document.body.appendChild(container);
-	}
+		function runMaze(){
+		    // get HTML canvas element and set size
+		    var mazeCanvas = document.getElementById("mazeCanvas");
+		    mazeCanvas.width = document.body.offsetWidth;
+		    mazeCanvas.height = document.body.offsetHeight;
 
-	/***
+		    // create scene, WEBGL renderer and camera
+		    var scene = new THREE.Scene();
+		    var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
+		    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
+		    t = camera;
 
-	Initial function that gets called to start the game
+		    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
+		 	placeWallGraphics(scene, mazeGrid);	    
 
-	***/
+		    var collectables = createCollectiblesList();
+		    collectables=placeCollectableGraphics(scene, collectables);
+		    var inventory = new Inventory($$("#inventory"), collectables);
 
-	var $$ = (e) => document.querySelector(e);
-	function runMaze(){
-	    // get HTML canvas element and set size
-	    var mazeCanvas = document.getElementById("mazeCanvas");
-	    mazeCanvas.width = document.body.offsetWidth;
-	    mazeCanvas.height = document.body.offsetHeight;
+		    var score_man = new ScoreManager($$("#score p"), collectables, {
+		    	aim: 0,
+		    	action: inventory.giveKey
+		    });
+		    var nobox = true;
 
-	    // create scene, WEBGL renderer and camera
-	    var scene = new THREE.Scene();
-	    var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
-	    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
+		    var door = createDoor(scene); // create door at 0,0,0
 
-	    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
-	 	placeWallGraphics(scene, mazeGrid);	    
+		   	// create Light source
+		   	var playerPointLight = new THREE.PointLight();
+		   	playerPointLight.position.set(0,0,0 );
+		   	scene.add( playerPointLight );
 
-	    var collectables = createCollectiblesList();
-	    collectables=placeCollectableGraphics(scene, collectables);
-	    var inventory = new Inventory($$("#inventory"), collectables);
+		   	var render = function () {
+		   		var now = Date.now();
+		   		var deltaTime = now - last_update;
+		   		last_update = now;
 
-	    var score_man = new ScoreManager($$("#score p"), collectables, {
-	    	aim: 200,
-	    	action: inventory.giveKey
-	    });
-	    var nobox = true;
-
-	    var door = createDoor(scene); // create door at 0,0,0
-
-	   	// create Light source
-	   	var playerPointLight = new THREE.PointLight();
-	   	playerPointLight.position.set(0,0,0 );
-	   	scene.add( playerPointLight );
-
-	   	var render = function () {
-	   		var now = Date.now();
-	   		var deltaTime = now - last_update;
-	   		last_update = now;
-
-	   		
-			if(state == WAITING){  // waiting for user input
-				   // if player has given an input, make a move
-				if(playerInput.left){
-				   	state = TURNING_LEFT;
-				   	switch(direction){
-				   		case NORTH:
-				   		direction = WEST;
-				   		break;
-				   		case EAST:
-				   		direction = NORTH;
-				   		break;
-				   		case SOUTH:
-				   		direction = EAST;
-				   		break;
-				   		case WEST:
-				   		direction = SOUTH;
-				   		break;
-				   	}
-					   player.direction = direction; //Sync player and camera
-				}
-				else if(playerInput.right){
-					state = TURNING_RIGHT;
-					switch(direction){
-						case NORTH:
-						direction = EAST;
-						break;
-						case EAST:
-						direction = SOUTH;
-						break;
-						case SOUTH:
-						direction = WEST;
-						break;
-						case WEST:
-						direction = NORTH;
-						break;
+		   		
+				if(state == WAITING){  // waiting for user input
+					   // if player has given an input, make a move
+					if(playerInput.left){
+					   	state = TURNING_LEFT;
+					   	switch(direction){
+					   		case NORTH:
+					   		direction = WEST;
+					   		break;
+					   		case EAST:
+					   		direction = NORTH;
+					   		break;
+					   		case SOUTH:
+					   		direction = EAST;
+					   		break;
+					   		case WEST:
+					   		direction = SOUTH;
+					   		break;
+					   	}
+						   player.direction = direction; //Sync player and camera
 					}
-				   player.direction = direction; //Sync player and camera
-				}
-				else if (playerInput.up ){
-					if(validMove(mazeGrid, player.gridX, player.gridY, player.direction)){
-						walkingDistance = 0;
-						startX = camera.position.x;
-						startZ = camera.position.z;
-						state = MOVING_FORWARD;
+					else if(playerInput.right){
+						state = TURNING_RIGHT;
 						switch(direction){
 							case NORTH:
-							player.gridX--;
+							direction = EAST;
 							break;
 							case EAST:
-							player.gridY++;
+							direction = SOUTH;
 							break;
 							case SOUTH:
-							player.gridX++;
+							direction = WEST;
 							break;
 							case WEST:
-							player.gridY--;
+							direction = NORTH;
 							break;
 						}
-					}else{
-						// shake animation 
+					   player.direction = direction; //Sync player and camera
 					}
-				}else if(playerInput.enter){
-					// console.log(player);
-					if(inventory.hasKey && direction == NORTH
-						&& player.gridX == 0 && player.gridY == 0){
-						state = FADING;
-						// console.log("Yay, level done!");
+					else if (playerInput.up ){
+						if(validMove(mazeGrid, player.gridX, player.gridY, player.direction)){
+							walkingDistance = 0;
+							startX = camera.position.x;
+							startZ = camera.position.z;
+							state = MOVING_FORWARD;
+							switch(direction){
+								case NORTH:
+								player.gridX--;
+								break;
+								case EAST:
+								player.gridY++;
+								break;
+								case SOUTH:
+								player.gridX++;
+								break;
+								case WEST:
+								player.gridY--;
+								break;
+							}
+						}else{
+							// shake animation 
+						}
+					}else if(playerInput.enter){
+						// console.log(player);
+						if(inventory.hasKey && direction == NORTH
+							&& player.gridX == 0 && player.gridY == 0){
+							state = FADING;
+							// console.log("Yay, level done!");
+						}
 					}
 				}
-			}
 
-			if(state == FADING){
-				var ops = scene.children.map( ({material}) => {
-					if(material){
-						material.transparent = true;	
-						material.opacity -= 0.1;
-						return material.opacity;
+				if(state == FADING){
+					var ops = scene.children.map( ({material}) => {
+						if(material){
+							material.transparent = true;	
+							material.opacity -= 0.1;
+							return material.opacity;
+						}
+						return 0;
+					}).filter(e => e > 0);
+
+					if(ops.length == 0){
+						state = DONE;
 					}
-					return 0;
-				}).filter(e => e > 0);
-
-				if(ops.length == 0){
-					state = DONE;
 				}
-			}
-			if(state == DONE){
-				if(nobox){
-					nobox = false;
-					var doNothing = () => {};
+				if(state == DONE){
+					if(nobox){
+						nobox = false;
+						var doNothing = () => {};
+						function startNewGame(){
+							// destroy current scene, camera etc
+							stop_render = true;
 
-					displayMessage("Ready for the next one?", ["Yes", doNothing], ["No", doNothing]);
-				}
-			}
+							// We are using a recursive call to start the next game.
+							// dispose everything, so that GC can collect it,
+							// although scope is not destroyed
 
-			if(state == TURNING_LEFT){
-				turningArc += Math.PI/2  * deltaTime/1000;
-				if(turningArc >= Math.PI/2){
-					turningArc = Math.PI/2;
-					currentDirection = currentDirection + turningArc;
-					turningArc = 0;
-					state = WAITING;
-				}
 
-				camera.rotation.y = currentDirection + turningArc;
-			}
+							// from a discourse thread
+							renderer.dispose();
+							const cleanMaterial = material => {
+								console.log('dispose material!')
+								material.dispose()
 
-			if(state == TURNING_RIGHT){
-				turningArc += Math.PI/2  * deltaTime/1000;
-				if(turningArc >= Math.PI/2){
-					turningArc = Math.PI/2;
-					currentDirection = currentDirection - turningArc;
-					turningArc = 0;
-					state = WAITING;
-				}
+								// dispose textures
+								for (const key of Object.keys(material)) {
+									const value = material[key]
+									if (value && typeof value === 'object' && 'minFilter' in value) {
+										console.log('dispose texture!')
+										value.dispose()
+									}
+								}
+							}
 
-				camera.rotation.y = currentDirection - turningArc;
-			}
+							scene.traverse(object => {
+								if (!object.isMesh) return
+								
+								console.log('dispose geometry!')
+								object.geometry.dispose()
 
-			if(state == MOVING_FORWARD)
-			{
+								if (object.material.isMaterial) {
+									cleanMaterial(object.material)
+								} else {
+									// an array of materials
+									for (const material of object.material) cleanMaterial(material)
+								}
+							})
 
-				walkingDistance += 1 * deltaTime/1000;
-				if(walkingDistance >= 1){
-					walkingDistance = 1;
-					state = WAITING;
-					collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
-				}
-				switch(direction){
-					case NORTH:
-					camera.position.z = startZ - walkingDistance;
-					break;
-					case EAST:
-					camera.position.x = startX + walkingDistance;
-					break;
-					case SOUTH:
-					camera.position.z = startZ + walkingDistance;
-					break;
-					case WEST:
-					camera.position.x = startX - walkingDistance;
-					break;
-				}
-				playerPointLight.position.x = camera.position.x;
-				playerPointLight.position.y = camera.position.y;
-				playerPointLight.position.z = camera.position.z;
-				// 	collectables.forEach(function(collectable){
-					
-				//    var collectableObject = scene.getObjectById( collectables.id);
-				//    if (flag++<10) console.log(collectableObject.id);
-				//    collectableObject.rotation.x += 2 * deltaTime/1000;
-				//    collectableObject.rotation.y += 2 * deltaTime/1000;
+							scene = null;
+							camera = null;
+							renderer = null;
+							
+							inventory.dispose();
+							score_man.dispose();
 
-				// });
-			}
 
-			scene.traverse (function (object){	
-				if (object.name==='collect'){
-					object.rotation.x += 2 * deltaTime/1000;
-					object.rotation.y += 2 * deltaTime/1000;
+							game()
+						}
+						displayMessage("Ready for the next one?", ["Yes", startNewGame], ["No", doNothing]);
+					}
 				}
 
-			});
-			renderer.render(scene, camera);
-			// recursive call [ call when js animation micro-calls are done]
-			requestAnimationFrame( render );
-		};
+				if(state == TURNING_LEFT){
+					turningArc += Math.PI/2  * deltaTime/1000;
+					if(turningArc >= Math.PI/2){
+						turningArc = Math.PI/2;
+						currentDirection = currentDirection + turningArc;
+						turningArc = 0;
+						state = WAITING;
+					}
 
-		render();
-	}
+					camera.rotation.y = currentDirection + turningArc;
+				}
+
+				if(state == TURNING_RIGHT){
+					turningArc += Math.PI/2  * deltaTime/1000;
+					if(turningArc >= Math.PI/2){
+						turningArc = Math.PI/2;
+						currentDirection = currentDirection - turningArc;
+						turningArc = 0;
+						state = WAITING;
+					}
+
+					camera.rotation.y = currentDirection - turningArc;
+				}
+
+				if(state == MOVING_FORWARD)
+				{
+
+					walkingDistance += 1 * deltaTime/1000;
+					if(walkingDistance >= 1){
+						walkingDistance = 1;
+						state = WAITING;
+						collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
+					}
+					switch(direction){
+						case NORTH:
+						camera.position.z = startZ - walkingDistance;
+						break;
+						case EAST:
+						camera.position.x = startX + walkingDistance;
+						break;
+						case SOUTH:
+						camera.position.z = startZ + walkingDistance;
+						break;
+						case WEST:
+						camera.position.x = startX - walkingDistance;
+						break;
+					}
+					playerPointLight.position.x = camera.position.x;
+					playerPointLight.position.y = camera.position.y;
+					playerPointLight.position.z = camera.position.z;
+					// 	collectables.forEach(function(collectable){
+						
+					//    var collectableObject = scene.getObjectById( collectables.id);
+					//    if (flag++<10) console.log(collectableObject.id);
+					//    collectableObject.rotation.x += 2 * deltaTime/1000;
+					//    collectableObject.rotation.y += 2 * deltaTime/1000;
+
+					// });
+				}
+				if(!stop_render){
+					scene.traverse (function (object){	
+						if (object.name==='collect'){
+							object.rotation.x += 2 * deltaTime/1000;
+							object.rotation.y += 2 * deltaTime/1000;
+						}
+
+					});
+					renderer.render(scene, camera);
+					// recursive call [ call when js animation micro-calls are done]
+					requestAnimationFrame( render );
+				}
+			};
+
+			render();
+		}
+		runMaze()
+	});
+
+	
 
 	// check if move is
 	function validMove(mazeGrid, x, y, direction){
@@ -633,6 +505,7 @@
 	function Inventory(container, collectables){
 		this.collectables = collectables;
 		this.collectedTypes = {}
+		this.container = container;
 
 		// hook a notification function on the collectables
 		this.collectables.forEach(m => {
@@ -703,6 +576,12 @@
 
 	}
 
+	Inventory.prototype.dispose = function(){
+
+		var c = Array.from(this.container.children);
+		c.forEach(e => e.remove());
+	}
+
 
 	/*****
 		Collectable Item
@@ -735,7 +614,7 @@
 	}
 
 	var itemTypes = [{
-		material: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA',
+		material: './images.jpeg',
 		score: 10,
 		quantity: 4,
 	},
@@ -848,12 +727,57 @@
 		return collectables;
 	}
 
+	function createDoor(scene){
+		var size = (x) => [x, 2*x];
+		var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
+		// scene.add(doorGeometry);
+
+		const loader = new THREE.TextureLoader();
+		var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
+		var door = new THREE.Mesh(doorGeometry,doorMaterial);
+		door.position.z=-0.465;
+		door.position.x=-0.3;
+		door.position.y=0;
+		scene.add(door);
+	}
+
+	function displayMessage(str, ...options){
+		var div = () => document.createElement('div');
+		var container = div();
+		container.className = "box-cont";
+		var box = div();
+		box.className = "box";
+		
+		var optionDiv = div();
+		optionDiv.className = "options";
+		options.forEach(([name, handler]) => {
+			var d = div();
+			d.className = "option";
+			d.innerText = name;
+			d.addEventListener('click', () => {
+				container.className += " fade-out";
+				setTimeout( () => {
+					container.remove();
+					handler();
+				}, 800);
+			});
+			optionDiv.appendChild(d)
+		})
+		var msgDiv = div();
+		msgDiv.className = "message";
+		msgDiv.innerHTML = '<p>' + str + '</p>';
+		box.appendChild(msgDiv);
+		box.appendChild(optionDiv);
+		container.appendChild(box);
+		document.body.appendChild(container);
+	}
+
 
 </script>
 
 <script src="js/utility.js"></script>
 </head>
-<body onload="runMaze();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
+<body onload="game();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
 	<div id="score"><span>Score</span><p></p></div>
 	<canvas id="mazeCanvas" width=1300 height=600></canvas>
 	<div id="inventory"></div>
