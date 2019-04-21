@@ -22,6 +22,8 @@ function doKeyDown(event){
    }
    else if(keynum == 40){
       playerInput.down = 1;
+   }else if(keynum == 13){
+      playerInput.enter = 1;
    }
 }
 
@@ -50,5 +52,7 @@ function doKeyUp(event){
    }
    else if(keynum == 40){
       playerInput.down = 0;
+   }else if(keynum == 13){
+      playerInput.enter = 0;
    }
 }

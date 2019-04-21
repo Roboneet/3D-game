@@ -18,8 +18,8 @@
 	    width: 200px;
 	    height: 70px;
 	    border-bottom-left-radius: 6px;
-	    border-left: 10px solid #888;
-	    border-bottom: 10px solid #888;
+	    border-left: 2px solid #fff;
+	    border-bottom: 5px solid #fff;
 	    color: #88ff64;
 	    text-align: center;
 	    vertical-align: middle;
@@ -43,15 +43,15 @@
 	div#inventory{
 		position: absolute;
 		bottom: 0;
-		left: 0;
+		right: 0;
 		display: flex;
-		border-top-right-radius: 6px;
+		border-top-left-radius: 6px;
 		background: #000;
 		opacity: 0.95;
-		border-right: 10px solid #888;
-		border-top: 10px solid #888;
+		border-left: 2px solid #fff;
+		border-top: 2px solid #fff;
 		padding: 10px;
-		width: 300px;
+		/*width: 300px;*/
 		flex-wrap: wrap;
 	}
 
@@ -88,6 +88,66 @@
 	    font-size: 1.1em;
 	}
 
+	.key{
+		background: #fff;
+	    /*border: 2px solid #f00; */
+	    border-radius: 50%;
+	}
+
+	.key .overlay{
+		border-color: #f00 !important;
+		border-radius: 50%;
+	}
+
+	.key .overlay{
+		transition: all 1s linear;
+		
+	}
+
+	.box-cont{
+		position: absolute;
+	    display: flex;
+	    -webkit-justify-content: center;
+	    justify-content: center;
+	    align-items: center;
+	    background: #000;
+	    top: 0;
+	    left: 0;
+	    width: 100vw;
+	    height: 100vh;
+	    color: #88ff64;
+	    opacity: 1;
+	    transition: all 1s linear;
+	}
+
+	.box-cont.fade-out{
+		opacity: 0;
+	}
+
+	.box{
+		/* border: 1px solid #fff; */
+	    font-family: arial;
+	    padding: 10px;
+	    border-radius: 6px;
+	}
+	.box .options{
+		display: flex;
+		-webkit-justify-content: space-evenly;
+		        justify-content: space-evenly;
+	}
+
+	.box .options *{
+		margin: 10px;
+	    /* border: 1px solid #fff; */
+	    padding: 10px;
+	    border-radius: 3px;
+	    transition: all 1s linear;
+	}
+
+	.box .option:hover{
+		background: #3c3c3c;
+	}	
+
 </style>
 <script src="js/three.min.js"></script>
 
@@ -97,6 +157,9 @@
 	const WAITING = 1;
 	const TURNING_RIGHT = 2;
 	const TURNING_LEFT = 3;
+	const MOVING_FORWARD = 4;
+	const FADING = 12;
+	const DONE = 11;
 	var state = WAITING;
 	
 	var currentDirection = 0;
@@ -108,12 +171,13 @@
 	const SOUTH = 103;
 	
 	var direction = NORTH;
-	const MOVING_FORWARD = 4;
+	
 	var walkDistance = 0;
 	var startX = 0;
 	var startZ = 0;
 
 	var last_update = Date.now();
+
 
 	var player = {};
 	player.gridX = 0;
@@ -121,6 +185,54 @@
 	player.direction = NORTH;
 
 	var flag=0;
+
+	var d;
+	function createDoor(scene){
+		var size = (x) => [x, 2*x];
+		var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
+		// scene.add(doorGeometry);
+
+		const loader = new THREE.TextureLoader();
+		var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
+		var door = new THREE.Mesh(doorGeometry,doorMaterial);
+		door.position.z=-0.465;
+		door.position.x=-0.3;
+		door.position.y=0;
+		d = door;
+		// door.rotation.x=Math.PI/2;
+		scene.add(door);
+	}
+
+	function displayMessage(str, ...options){
+		var div = () => document.createElement('div');
+		var container = div();
+		container.className = "box-cont";
+		var box = div();
+		box.className = "box";
+		
+		var optionDiv = div();
+		optionDiv.className = "options";
+		options.forEach(([name, handler]) => {
+			var d = div();
+			d.className = "option";
+			d.innerText = name;
+			d.addEventListener('click', () => {
+				container.className += " fade-out";
+				setTimeout( () => {
+					container.remove();
+					handler();
+				}, 800);
+			});
+			optionDiv.appendChild(d)
+		})
+		var msgDiv = div();
+		msgDiv.className = "message";
+		msgDiv.innerHTML = '<p>' + str + '</p>';
+		box.appendChild(msgDiv);
+		box.appendChild(optionDiv);
+		container.appendChild(box);
+		document.body.appendChild(container);
+	}
 
 	/***
 
@@ -140,17 +252,24 @@
 	    var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
 	    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
 
-	    var mazeGrid = createMazeGrid(MAZE_DIMS,MAZE_DIMS);
+	    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
 	 	placeWallGraphics(scene, mazeGrid);	    
 
 	    var collectables = createCollectiblesList();
 	    collectables=placeCollectableGraphics(scene, collectables);
 	    var inventory = new Inventory($$("#inventory"), collectables);
-	    var score_man = new ScoreManager($$("#score p"), collectables);
+
+	    var score_man = new ScoreManager($$("#score p"), collectables, {
+	    	aim: 5,
+	    	action: inventory.giveKey
+	    });
+	    var nobox = true;
+
+	    var door = createDoor(scene); // create door at 0,0,0
 
 	   	// create Light source
 	   	var playerPointLight = new THREE.PointLight();
-	   	playerPointLight.position.set( 0, 0, 0 );
+	   	playerPointLight.position.set(0,0,0 );
 	   	scene.add( playerPointLight );
 
 	   	var render = function () {
@@ -220,8 +339,39 @@
 					}else{
 						// shake animation 
 					}
+				}else if(playerInput.enter){
+					// console.log(player);
+					if(inventory.hasKey && direction == NORTH
+						&& player.gridX == 0 && player.gridY == 0){
+						state = FADING;
+						// console.log("Yay, level done!");
+					}
 				}
 			}
+
+			if(state == FADING){
+				var ops = scene.children.map( ({material}) => {
+					if(material){
+						material.transparent = true;	
+						material.opacity -= 0.1;
+						return material.opacity;
+					}
+					return 0;
+				}).filter(e => e > 0);
+
+				if(ops.length == 0){
+					state = DONE;
+				}
+			}
+			if(state == DONE){
+				if(nobox){
+					nobox = false;
+					var doNothing = () => {};
+
+					displayMessage("Ready for the next one?", ["Yes", doNothing], ["No", doNothing]);
+				}
+			}
+
 			if(state == TURNING_LEFT){
 				turningArc += Math.PI/2  * deltaTime/1000;
 				if(turningArc >= Math.PI/2){
@@ -395,7 +545,7 @@
 	// place wall graphics on screen
 	function placeWallGraphics(scene, mazeGrid){
 
-		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
+		var wallGeometry = new THREE.BoxGeometry( 1.0, 0.5 ,0.06);
 		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
 
@@ -452,10 +602,14 @@
 	/*****
 		Score Manager
 	****/
-	function ScoreManager(ele, collectables){
+	function ScoreManager(ele, collectables, target){
+
 		// hook a notification function on the collectables
 		collectables.forEach(m => m.hook(this.notification.bind(this)))
 		this.ele = ele;
+		var {aim, action}= target;
+		this.aim = aim;
+		this.action = action;
 		this.update(0);
 	}
 	
@@ -463,6 +617,9 @@
 	ScoreManager.prototype.notification = function(collectable){
 		this.update(this.score + collectable.score);
 		console.log("ScoreManager says  score is ", this.score);
+		if(this.score >= this.aim){
+			this.action();
+		}
 	}
 
 	ScoreManager.prototype.update = function(n){
@@ -484,6 +641,7 @@
 		});
 		this.panel = {};
 		var scope = this;
+
 		this.collectables.map(ele => {
 			var o = scope.createDisplay(ele);
 			this.panel[ele.id] = o;
@@ -491,8 +649,27 @@
 		}).forEach(ele => {
 			container.appendChild(ele);
 		})
+		this.key = this.createKey();
+		container.appendChild(this.key);
+
+		this.hasKey = false;
+
+		// will be called by another function.
+		// so, bind this to my scope.
+		this.giveKey = this.giveKey.bind(this);
 
 	}
+
+	Inventory.prototype.createKey = function(){
+		var keyImage = "http://realpinkaz.com/wp-content/uploads/olde-key-clip-art-at-clker-vector-clip-art-online-royalty-key-cartoon.svg";
+		var d = document.createElement("div");
+		d.className = "collectable key";
+		d.setAttribute('data-collected', false);
+		d.innerHTML = ('<div class="overlay"></div>' +
+			'<div class="material"><img src="' + keyImage + '"></div>');
+		return d;
+	}
+
 	Inventory.prototype.createDisplay = function(obj){
 		var {id, url, collected, score} = obj;
 		var d = document.createElement("div");
@@ -508,10 +685,6 @@
 		console.log("Inventory says ", collectable, "is collected");
 		this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
 		this.collectedTypes[collectable.type] = true;
-		console.log(this.collectedTypes);
-		if(this.collected_all_types()){
-			this.giveKey();
-		}
 	}
 
 	Inventory.prototype.collected_all_types = function(){
@@ -523,6 +696,10 @@
 	}
 
 	Inventory.prototype.giveKey = function(){
+		if(this.hasKey)return;
+		
+		this.hasKey = true;
+		this.key.setAttribute('data-collected', true);
 
 	}
 
@@ -649,7 +826,6 @@
 	   });
 	   return collectables;
 	}
-
 
 	// call if any collectible collided
 	function processCollectableCollisions(x, y,collectables,scene){
