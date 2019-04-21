@@ -69,6 +69,7 @@
 		width: 100%;
 		height: 100%;
 		background: transparent;
+		font-size: 0;
 	}
 	.material img{
 		width: 50px;
@@ -79,6 +80,12 @@
 		background: #000;
 		opacity: 0.95;
 		border: 1px solid #88ff64;
+		color: #ddd;
+	    font-family: monospace;
+	    display: flex;
+	    justify-content: center;
+	    align-items: center;
+	    font-size: 1.1em;
 	}
 
 </style>
@@ -441,12 +448,18 @@
 			scene.add(wall);
 		}
 	}
+
+	/*****
+		Score Manager
+	****/
 	function ScoreManager(ele, collectables){
+		// hook a notification function on the collectables
 		collectables.forEach(m => m.hook(this.notification.bind(this)))
 		this.ele = ele;
 		this.update(0);
 	}
-
+	
+	// notified by collectable when it is collected
 	ScoreManager.prototype.notification = function(collectable){
 		this.update(this.score + collectable.score);
 		console.log("ScoreManager says  score is ", this.score);
@@ -457,9 +470,18 @@
 		this.ele.innerText = this.score;
 	}
 
+	/*****
+		Inventory Manager
+	****/
 	function Inventory(container, collectables){
 		this.collectables = collectables;
-		this.collectables.forEach(m => m.hook(this.notification.bind(this)));
+		this.collectedTypes = {}
+
+		// hook a notification function on the collectables
+		this.collectables.forEach(m => {
+			this.collectedTypes[m.type] = false;
+			m.hook(this.notification.bind(this))
+		});
 		this.panel = {};
 		var scope = this;
 		this.collectables.map(ele => {
@@ -472,37 +494,62 @@
 
 	}
 	Inventory.prototype.createDisplay = function(obj){
-		var {id, url, collected} = obj;
+		var {id, url, collected, score} = obj;
 		var d = document.createElement("div");
 		d.className = "collectable";
 		d.setAttribute('data-collected', collected);
-		d.innerHTML = ('<div class="overlay"></div>' +
+		d.innerHTML = ('<div class="overlay"><p> +' + score + '</p></div>' +
 		'<div class="material"><img src="' + url + '"></div>');
 		return d;
 	}
 
+	// notified by collectable when it is collected
 	Inventory.prototype.notification = function(collectable){
 		console.log("Inventory says ", collectable, "is collected");
 		this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
+		this.collectedTypes[collectable.type] = true;
+		console.log(this.collectedTypes);
+		if(this.collected_all_types()){
+			this.giveKey();
+		}
+	}
+
+	Inventory.prototype.collected_all_types = function(){
+		var types = this.collectedTypes;
+		for(var ct in types){
+			if(!types[ct])return false;
+		}
+		return true;
+	}
+
+	Inventory.prototype.giveKey = function(){
+
 	}
 
 
+	/*****
+		Collectable Item
+	****/
 	// Collectable object constructor
-	function Collectable(x, y, id, url, loader, score){
+	function Collectable(x, y, index, url, loader, score, type){
 		this.x = x;
 		this.y = y;
-		this.id = id;
+		this.id = null;
+		this.index = index;
 		this.url = url;
 		this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
 		this.score = score;
 		this.collected = false;
 		this.subjects = [];
+		this.type = type; // uses itemTypes[type]
 	}
 
 	Collectable.prototype.action = function() {
 		console.log(this);
 		this.collected = true;
 		// alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
+		
+		// notify every listener
 		this.subjects.forEach(f => f(this));
 	};
 
@@ -510,42 +557,77 @@
 		this.subjects.push(f);
 	}
 
+	var itemTypes = [{
+		material: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA',
+		score: 10,
+		quantity: 4,
+	},
+	{
+		material: "https://previews.123rf.com/images/iloveotto/iloveotto1703/iloveotto170301151/73964767-brown-antique-wall-materials-textures.jpg",
+		score: 20,
+		quantity: 4,
+	},
+	{
+		material: "https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg",
+		score: 30,
+		quantity: 2,
+	},
+	{
+		material: 'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg',
+		score: 40,
+		quantity: 2,
+	},
+	{
+		material: "https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
+		score: 50,
+		quantity: 2,
+	},
+	{
+		material: "https://www.sketchuptextureclub.com/public/texture_f/texture-wrinkled-paper-seamless.jpg",
+		score: 100,
+		quantity: 1,
+	}]
+
 	// create collectables
-	function createCollectiblesList(){
-		var materials = ['https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA',
-		"https://previews.123rf.com/images/iloveotto/iloveotto1703/iloveotto170301151/73964767-brown-antique-wall-materials-textures.jpg",
-		"https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg", 
-		'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg', 
-		"https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
-		"https://www.sketchuptextureclub.com/public/texture_f/texture-wrinkled-paper-seamless.jpg"
-		]
-		
+	function createCollectiblesList(){		
 		const loader = new THREE.TextureLoader();
 		var rand_num = function(upper){
 			return Math.floor(Math.random()*(upper + 1));
 		}
 
-		var collectables = materials.map((url, index) =>{
-			return new Collectable(rand_num(10), rand_num(10), index, url, loader, rand_num(100));
-		});
+		// create map with every position empty
+		var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
 
-		// collectables.push(
-		// {
-		// 	x:0,
-		// 	y:1, 
-		// 	id:null,
-		// 	collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')}),
-		// 	action:function(){alert("You picked up a collectable");console.log(arguments)},
-		// });
+		function find_rand_empty(){
+			var x = rand_num(MAZE_DIMS - 1);
+			var y = rand_num(MAZE_DIMS - 1);
+			var a = 0;
+			while(empty_positions[x][y] != 0 && a < MAZE_DIMS*MAZE_DIMS){
+				a += 1;
+				x = rand_num(MAZE_DIMS - 1);
+				y = rand_num(MAZE_DIMS - 1);
+			}
+			if(a == MAZE_DIMS*MAZE_DIMS){
+				console.log("no empty spots left!");
+			}
+			return [x, y]
+		}
 
-		// collectables.push(
-		// {		
-		// 	x:1,
-		// 	y:0,
-		// 	id:null,
-		// 	collectableMaterial: new THREE.MeshStandardMaterial( {map: loader.load('https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg')}),
-		// 	action:function(){alert("You picked up a different collectable"); console.log(arguments)},
-		// });
+		function _create_({material, score}, index, type){
+			var [x, y] = find_rand_empty();
+			empty_positions[x][y] = 1;
+			return new Collectable(x, y, index, material, loader, score, type);
+		}
+
+		var collectables = [];
+		var k = 0;
+		for(var i in itemTypes){
+			var item = itemTypes[i];
+			for(var j = 0; j < item.quantity; j++){
+				collectables.push(_create_(item, k, i));
+				k++;
+			}
+		}
 
 		return collectables;
 	}
