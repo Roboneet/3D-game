@@ -584,7 +584,7 @@
 			var t = potion.quantity;
 			for(var j = 0; j< t; j++){
 				var m = new THREE.MeshStandardMaterial({map: load_material(potion.material)});
-				var g = new THREE.SphereGeometry(0.125, 100, 100);
+				var g = new THREE.IcosahedronGeometry(0.125); //, 100, 100
 				var p = new Potion(...find_rand_empty(empty_positions), k, m, g, i);
 				potions.push(p);
 				k++;
