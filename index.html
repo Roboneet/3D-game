@@ -39,6 +39,7 @@
 
 	var playerInput;
 	var t = null;
+	
 	var game = (function(){
 		playerInput = new Object();
 		var state = START;	
@@ -51,6 +52,7 @@
 		var last_update = Date.now();
 		var flag=0;
 		var stop_render = false;
+		//var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
 
 		var player = {};
 		player.gridX = 0;
@@ -80,8 +82,10 @@
 		    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
 		 	placeWallGraphics(scene, mazeGrid);	    
 
-		    var collectables = createCollectiblesList();
+		    var collectables = createCollectiblesList(empty_positions);
 		    collectables=placeCollectableGraphics(scene, collectables);
+		    var obstacles = createObstaclesList(empty_positions);
+		    obstacles=placeObstacleGraphics(scene, obstacles);
 		    var inventory = new Inventory($$("#inventory"), collectables);
 
 		    var score_man = new ScoreManager($$("#score"), collectables, {
@@ -306,6 +310,7 @@
 						walkingDistance = 1;
 						state = WAITING;
 						collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
+						obstacles=processObstacleCollisions(player.gridX, player.gridY,obstacles,scene)
 					}
 					switch(direction){
 						case NORTH:
@@ -452,7 +457,7 @@
 	// place wall graphics on screen
 	function placeWallGraphics(scene, mazeGrid){
 
-		var wallGeometry = new THREE.BoxGeometry( 1.0, 0.5 ,0.06);
+		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
 		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
 
@@ -662,7 +667,7 @@
 	}
 
 	var itemTypes = [{
-		material: './images.jpeg',
+		material: "./images.jpeg",
 		score: 10,
 		quantity: 4,
 	},
@@ -693,14 +698,14 @@
 	}]
 
 	// create collectables
-	function createCollectiblesList(){		
+	function createCollectiblesList(empty_positions){		
 		const loader = new THREE.TextureLoader();
 		var rand_num = function(upper){
 			return Math.floor(Math.random()*(upper + 1));
 		}
 
 		// create map with every position empty
-		var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
+		
 
 		function find_rand_empty(){
 			var x = rand_num(MAZE_DIMS - 1);
@@ -826,10 +831,136 @@
 			optionDiv.children[0].focus();
 	}
 
+function Obstacle(x, y, index, url, loader, score, type){
+		this.x = x;
+		this.y = y;
+		this.id = null;
+		this.index = index;
+		this.url = url;
+		this.obstacleMaterial = new THREE.MeshStandardMaterial({ color: "#FFF", transparent: true, side: THREE.DoubleSide, alphaTest: 0.0 });
+		var alphaMap = new THREE.TextureLoader().load(url);
+		this.obstacleMaterial.alphaMap = alphaMap;
+		this.obstacleMaterial.alphaMap.magFilter = THREE.NearestFilter;
+		this.obstacleMaterial.alphaMap.wrapT = THREE.RepeatWrapping;
+		this.obstacleMaterial.alphaMap.repeat.y = 1;
+		this.score = score;
+		this.collected = false;
+		this.subjects = [];
+		this.type = type; // uses obstacleTypes[type]
+	}
+
+	Obstacle.prototype.action = function() {
+		console.log(this);
+		this.collected = true;
+		// alert("You collected Obstacle of ID : " + this.id +  "\n You get " +  this.score +  " points");
+		
+		// notify every listener
+		this.subjects.forEach(f => f(this));
+	};
+
+	Obstacle.prototype.hook = function(f){
+		this.subjects.push(f);
+	}
+
+	var obstacleTypes = [{
+		material: "https://cdn.wallpapersafari.com/30/15/ZlxWtg.png",
+		score: -5,
+		quantity: 4,
+	},
+	{
+		material: "https://d2v9y0dukr6mq2.cloudfront.net/video/thumbnail/3xEGOGX/videoblocks-3d-metal-mesh-metal-grid-fence-dynamic-steel-pipe-intertwined-on-black-background-animation-abstract-illustration-seamless-loop_sky-mfvnz_thumbnail-full01.png",
+		score: -10,
+		quantity: 4,
+	}]
+
+	// create obstacles
+	function createObstaclesList(empty_positions){		
+		const loader = new THREE.TextureLoader();
+		var rand_num = function(upper){
+			return Math.floor(Math.random()*(upper + 1));
+		}
+
+		// create map with every position empty
+		//var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
+
+		function find_rand_empty(){
+			var x = rand_num(MAZE_DIMS - 1);
+			var y = rand_num(MAZE_DIMS - 1);
+			var a = 0;
+			while(empty_positions[x][y] != 0 && a < MAZE_DIMS*MAZE_DIMS){
+				a += 1;
+				x = rand_num(MAZE_DIMS - 1);
+				y = rand_num(MAZE_DIMS - 1);
+			}
+			if(a == MAZE_DIMS*MAZE_DIMS){
+				console.log("no empty spots left!");
+			}
+			return [x, y]
+		}
+
+		function _create_({material, score}, index, type){
+			var [x, y] = find_rand_empty();
+			empty_positions[x][y] = 1;
+			return new Obstacle(x, y, index, material, loader, score, type);
+		}
+
+		var obstacles = [];
+		var k = 0;
+		for(var i in obstacleTypes){
+			var item = obstacleTypes[i];
+			for(var j = 0; j < item.quantity; j++){
+				obstacles.push(_create_(item, k, i));
+				k++;
+			}
+		}
+
+		return obstacles;
+	}
+
+
+	// place obstacle graphics on screen
+	function placeObstacleGraphics(scene, obstacles){
+		var obstacleGeometry = new THREE.BoxGeometry(1.0, 0.5 ,1.0);
+	   //const loader = new THREE.TextureLoader();
+	   // var obstacleMaterial= new THREE.MeshPhongMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')});
+	   //var obstacleMaterial=new THREE.MeshStandardMaterial({color:"red"});
+	   obstacles.forEach(function(obstacle){
+	   	var obstacleObject = new THREE.Mesh(obstacleGeometry,obstacle.obstacleMaterial);
+	   	obstacle.id=obstacleObject.id;
+	   	obstacleObject.name='obstacle';
+	   	obstacleObject.position.z = obstacle.x;
+	   	obstacleObject.position.x = obstacle.y;
+	   	console.log(obstacle.x,obstacle.y);
+	   	scene.add(obstacleObject);
+	   });
+	   return obstacles;
+	}
+
+	// call if any collectible collided
+	function processObstacleCollisions(x, y,obstacles,scene){
+		obstacles.forEach(function(obstacle,index){
+			if(obstacle.x == x && obstacle.y == y){
+	         obstacle.action(); //Run the object's event
+	         var id=obstacle.id;
+	         //var obstacleObject = scene.getObjectById( obstacles.id );
+	         // scene.remove(obstacleObject); //Remove graphics from scene
+	         obstacles.splice(index,1); //Remove obstacle from list
+	    	}
+		    var obj;
+		    scene.traverse(function (object){	
+		     	if (object.id==id){
+		     		obj=object;
+		     	}
+		     });
+	    	scene.remove(obj);
+	 	});
+		return obstacles;
+	}
 
 </script>
 
 <script src="js/utility.js"></script>
+
 </head>
 <body onload="game();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
 	<div id="score"><span>Score</span><p></p></div>
