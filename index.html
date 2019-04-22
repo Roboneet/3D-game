@@ -10,14 +10,12 @@
 	var $ = (p, e) => p.querySelector(e);
 	var make = (n) => document.createElement(n);
 	var div = () => make('div');
-	function addClass(ele, name){
-		if(ele.className.match(name) == null)
-			ele.className += (" " + name);
-	}
-	function removeClass(ele, name){
-		var c = ele.className
-		if(c.match(name) != null)
-			ele.className = c.replace(name, "");
+
+	var {PI, sin, cos, min, max} = Math;
+
+	function load_material(url){
+		const loader = new THREE.TextureLoader();
+		return loader.load(url);
 	}
 
 	// GAME CONSTANTS
@@ -31,6 +29,7 @@
 	const DONE = 11;
 	const FADING_IN = 13;
 	const START = 14;
+	const SHAKING = 15;
 
 	const NORTH = 100;
 	const EAST = 101;
@@ -40,7 +39,30 @@
 	var playerInput;
 	var t = null;
 	
+	var rand_num = function(upper){
+		return Math.floor(Math.random()*(upper + 1));
+	}
+
+	function find_rand_empty(arr){
+		var n = arr.length;
+		var x = rand_num(n - 1);
+		var y = rand_num(n - 1);
+		var a = 0;
+		while(arr[x][y] != 0 && a < n*n){
+			a += 1;
+			x = rand_num(n - 1);
+			y = rand_num(n - 1);
+		}
+		if(a == n*n){
+			console.log("no empty spots left!");
+		}
+		return [x, y]
+	}
+
+	
 	var game = (function(){
+		
+
 		playerInput = new Object();
 		var state = START;	
 		var currentDirection = 0;
@@ -53,6 +75,8 @@
 		var flag=0;
 		var stop_render = false;
 		var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
+		var shake;
+		
 
 		var player = {};
 		player.gridX = 0;
@@ -86,12 +110,15 @@
 		    collectables=placeCollectableGraphics(scene, collectables);
 		    var obstacles = createObstaclesList(empty_positions);
 		    obstacles=placeObstacleGraphics(scene, obstacles);
-		    var inventory = new Inventory($$("#inventory"), collectables);
+		    
+		    var potions = magicPotion(empty_positions, scene);
+		    
+		    var inventory = new Inventory($$("#inventory"), collectables, potions);
 
 		    var score_man = new ScoreManager($$("#score"), [...obstacles,...collectables], {
-		    	aim: 0,
+		    	aim: 200,
 		    	action: inventory.giveKey
-		    });
+		    }, inventory.hasPotion, inventory.usePotion);
 		    var nobox = true;
 
 		    createDoor(scene);
@@ -130,7 +157,28 @@
 		   				state = WAITING;
 		   			}
 
+		   		}else if(state == SHAKING){
+		   			
+		   			var axis_dir = {
+		   				100: 'z', // NORTH
+		   				101: 'x', // EAST
+		   				102: 'x', // WEST
+		   				103: 'z', // SOUTH
+		   			}
+
+		   			var prev = shake.value();
+		   			shake.update();
+		   			var disp = shake.value() - prev;
+
+		   			var a = axis_dir[direction];
+		   			
+		   			camera.position[a] += disp;
+		   			
+		   			if(shake.done()){
+		   				state = WAITING;
+		   			}
 		   		}
+
 
 		   		
 				if(state == WAITING){  // waiting for user input
@@ -193,6 +241,11 @@
 							}
 						}else{
 							// shake animation 
+							var a = 0.3;
+							if(direction == WEST || direction == NORTH)
+								a *= -1.0;
+							shake = new Shaker(90, a);
+							state = SHAKING;
 						}
 					}else if(playerInput.enter){
 						// console.log(player);
@@ -230,8 +283,7 @@
 							// We are using a recursive call to start the next game.
 							// dispose everything, so that GC can collect it,
 							// although scope is not destroyed
-
-
+							
 							// from a discourse thread
 							renderer.dispose();
 							const cleanMaterial = material => {
@@ -309,8 +361,10 @@
 					if(walkingDistance >= 1){
 						walkingDistance = 1;
 						state = WAITING;
-						collectables=processCollectableCollisions(player.gridX, player.gridY,collectables,scene)
-						obstacles=processObstacleCollisions(player.gridX, player.gridY,obstacles,scene)
+						collectables=processCollisions(player.gridX, player.gridY,collectables,scene);
+						obstacles=processCollisions(player.gridX, player.gridY,obstacles,scene);
+						potions=processCollisions(player.gridX, player.gridY,potions,scene);
+
 					}
 					switch(direction){
 						case NORTH:
@@ -340,7 +394,7 @@
 				}
 				if(!stop_render){
 					scene.traverse (function (object){	
-						if (object.name==='collect'){
+						if (object.name==='collect' || object.name==='potion'){
 							object.rotation.x += 2 * deltaTime/1000;
 							object.rotation.y += 2 * deltaTime/1000;
 						}
@@ -389,29 +443,6 @@
 			this.southWall = southWall;
 			this.westWall = westWall;
 		}
-		MazeCell.prototype.print = function() {
-			// var str = "";
-			var str = ["   ", "    ", "   "];
-			if(this.northWall){
-				str[0] = " -- ";
-			}
-
-			if(this.westWall){
-				str[1] = "|" + str[1].slice(1);
-				console.log(str[1])
-			}
-
-			if(this.eastWall){
-				str[1] =  str[1].slice(0, 3) + "|";
-				// str[1][3] += '|';
-			}
-			
-			if(this.southWall){
-				str[2] = " -- ";
-			}
-			
-			return str;
-		};
 		var mazeGrid = Array(height);
 
 		for( var i = 0; i<height; i++){
@@ -445,11 +476,6 @@
 		  }
 		}
 		
-		console.log(mazeGrid.map(row=> row.map(cell=> cell.print()).reduce((acc, ele) => {
-			ele.forEach((e, i) => acc[i] += e);
-			return acc;
-		}, ["", "", ""])));
-
 		return mazeGrid;
 	}
 
@@ -510,219 +536,11 @@
 		}
 	}
 
-	/*****
-		Score Manager
-	****/
-	function ScoreManager(ele, items, target){
-
-		// hook a notification function on the collectables
-		items.forEach(m => m.hook(this.notification.bind(this)))
-		this.ele = ele;
-		var {aim, action}= target;
-		this.aim = aim;
-		this.action = action;
-		addClass(this.ele, "active");
-		this.update(0);
-	}
-	
-	// notified by item when it is collected
-	ScoreManager.prototype.notification = function(item){
-		this.update(this.score + item.score);
-		// console.log("ScoreManager says  score is ", this.score);
-		if(this.score >= this.aim){
-			this.action();
-		}
-	}
-
-	ScoreManager.prototype.update = function(n){
-		this.score = n;
-		$(this.ele, "p").innerText = this.score;
-	}
-
-	ScoreManager.prototype.dispose = function(){
-		console.log("dispose score manager");
-		removeClass(this.ele, "active");		
-	}
-
-	/*****
-		Inventory Manager
-	****/
-	function Inventory(container, collectables){
-		this.collectables = collectables;
-		this.collectedTypes = {}
-		this.container = container;
-
-		// hook a notification function on the collectables
-		this.collectables.forEach(m => {
-			this.collectedTypes[m.type] = false;
-			m.hook(this.notification.bind(this))
-		});
-		this.panel = {};
-		var scope = this;
-
-		this.collectables.map(ele => {
-			var o = scope.createDisplay(ele);
-			this.panel[ele.id] = o;
-			return o;
-		}).forEach(ele => {
-			container.appendChild(ele);
-		})
-		this.key = this.createKey();
-		container.appendChild(this.key);
-
-		this.hasKey = false;
-
-		// will be called by another function.
-		// so, bind this to my scope.
-		this.giveKey = this.giveKey.bind(this);
-		addClass(container, "active");
-
-	}
-
-
-
-	Inventory.prototype.createKey = function(){
-		var keyImage = "http://realpinkaz.com/wp-content/uploads/olde-key-clip-art-at-clker-vector-clip-art-online-royalty-key-cartoon.svg";
-		var d = document.createElement("div");
-		d.className = "collectable key";
-		d.setAttribute('data-collected', false);
-		d.innerHTML = ('<div class="overlay"></div>' +
-			'<div class="material"><img src="' + keyImage + '"></div>');
-		return d;
-	}
-
-	Inventory.prototype.createDisplay = function(obj){
-		var {id, url, collected, score} = obj;
-		var d = document.createElement("div");
-		d.className = "collectable";
-		d.setAttribute('data-collected', collected);
-		d.innerHTML = ('<div class="overlay"><p> +' + score + '</p></div>' +
-		'<div class="material"><img src="' + url + '"></div>');
-		return d;
-	}
-
-	// notified by collectable when it is collected
-	Inventory.prototype.notification = function(collectable){
-		// console.log("Inventory says ", collectable, "is collected");
-		this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
-		this.collectedTypes[collectable.type] = true;
-	}
-
-	Inventory.prototype.collected_all_types = function(){
-		var types = this.collectedTypes;
-		for(var ct in types){
-			if(!types[ct])return false;
-		}
-		return true;
-	}
-
-	Inventory.prototype.giveKey = function(){
-		if(this.hasKey)return;
-		
-		this.hasKey = true;
-		this.key.setAttribute('data-collected', true);
-
-	}
-
-	Inventory.prototype.dispose = function(){
-		console.log("dispose inventory");
-		removeClass(this.container, "active");
-		var scope = this;
-		setTimeout(() => {
-			var c = Array.from(scope.container.children);
-			c.forEach(e => e.remove());
-		}, 1000);
-	}
-
-
-	/*****
-		Collectable Item
-	****/
-	// Collectable object constructor
-	function Collectable(x, y, index, url, loader, score, type){
-		this.x = x;
-		this.y = y;
-		this.id = null;
-		this.index = index;
-		this.url = url;
-		this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
-		this.score = score;
-		this.collected = false;
-		this.subjects = [];
-		this.type = type; // uses itemTypes[type]
-	}
-
-	Collectable.prototype.action = function() {
-		console.log(this);
-		this.collected = true;
-		// alert("You collected Collectable of ID : " + this.id +  "\n You get " +  this.score +  " points");
-		
-		// notify every listener
-		this.subjects.forEach(f => f(this));
-	};
-
-	Collectable.prototype.hook = function(f){
-		this.subjects.push(f);
-	}
-
-	var itemTypes = [{
-		material: "./images.jpeg",
-		score: 10,
-		quantity: 2,
-	},
-	{
-		material: "https://previews.123rf.com/images/iloveotto/iloveotto1703/iloveotto170301151/73964767-brown-antique-wall-materials-textures.jpg",
-		score: 20,
-		quantity: 2,
-	},
-	{
-		material: "https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg",
-		score: 30,
-		quantity: 2,
-	},
-	{
-		material: 'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg',
-		score: 40,
-		quantity: 1,
-	},
-	{
-		material: "https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
-		score: 50,
-		quantity: 1,
-	},
-	{
-		material: "https://www.sketchuptextureclub.com/public/texture_f/texture-wrinkled-paper-seamless.jpg",
-		score: 100,
-		quantity: 1,
-	}]
-
 	// create collectables
 	function createCollectiblesList(empty_positions){		
 		const loader = new THREE.TextureLoader();
-		var rand_num = function(upper){
-			return Math.floor(Math.random()*(upper + 1));
-		}
-
-		// create map with every position empty
-		
-
-		function find_rand_empty(){
-			var x = rand_num(MAZE_DIMS - 1);
-			var y = rand_num(MAZE_DIMS - 1);
-			var a = 0;
-			while(empty_positions[x][y] != 0 && a < MAZE_DIMS*MAZE_DIMS){
-				a += 1;
-				x = rand_num(MAZE_DIMS - 1);
-				y = rand_num(MAZE_DIMS - 1);
-			}
-			if(a == MAZE_DIMS*MAZE_DIMS){
-				console.log("no empty spots left!");
-			}
-			return [x, y]
-		}
-
 		function _create_({material, score}, index, type){
-			var [x, y] = find_rand_empty();
+			var [x, y] = find_rand_empty(empty_positions);
 			empty_positions[x][y] = 1;
 			return new Collectable(x, y, index, material, loader, score, type);
 		}
@@ -740,22 +558,46 @@
 		return collectables;
 	}
 
+	function placeBoxOnScene(scene, items, dims, name, materialName){
+	  var itemGeometry = (new THREE.BoxGeometry(...dims));
+	  items.forEach(function(item){
+	  	var {x, y} = item;
+	  	// console.log(x, y);
+	  	var geometry = item.geometry || itemGeometry;
+	   	var itemObject = new THREE.Mesh(geometry ,item[materialName]);
+	   	item.id=itemObject.id;
+	   	itemObject.name=name;
+	   	itemObject.position.z = x;
+	   	itemObject.position.x = y;
+	   	scene.add(itemObject);
+	   });
+	   return items;
+	}
+
+	function magicPotion(empty_positions, scene){
+		var l = potionTypes.length;
+		var k = 0;
+		var potions = [];
+		for(var i = 0; i< l; i++){
+			var potion = potionTypes[i]
+			var t = potion.quantity;
+			for(var j = 0; j< t; j++){
+				var m = new THREE.MeshStandardMaterial({map: load_material(potion.material)});
+				var g = new THREE.SphereGeometry(0.125, 100, 100);
+				var p = new Potion(...find_rand_empty(empty_positions), k, m, g, i);
+				potions.push(p);
+				k++;
+			}
+
+		}
+
+		return placeBoxOnScene(scene, potions, [1, 1, 1], 'potion', 'material');
+	}
+
 
 	// place collectable graphics on screen
 	function placeCollectableGraphics(scene, collectables){
-		var collectableGeometry = new THREE.BoxGeometry( 0.25, 0.25, 0.25 );
-	   //const loader = new THREE.TextureLoader();
-	   // var collectableMaterial= new THREE.MeshPhongMaterial( {map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA')});
-	   //var collectableMaterial=new THREE.MeshStandardMaterial({color:"red"});
-	   collectables.forEach(function(collectable){
-	   	var collectableObject = new THREE.Mesh(collectableGeometry,collectable.collectableMaterial);
-	   	collectable.id=collectableObject.id;
-	   	collectableObject.name='collect';
-	   	collectableObject.position.z = collectable.x;
-	   	collectableObject.position.x = collectable.y;
-	   	scene.add(collectableObject);
-	   });
-	   return collectables;
+	 	return placeBoxOnScene(scene, collectables, [0.25, 0.25, 0.25], 'collect', 'collectableMaterial');
 	}
 
 	// call if any collectible collided
@@ -779,125 +621,15 @@
 		return collectables;
 	}
 
-	function createDoor(scene, x=-0.3, y=0, z=-0.465){
-		var size = (x) => [x, 2*x];
-		var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
-		// scene.add(doorGeometry);
-
-		const loader = new THREE.TextureLoader();
-		var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
-		var door = new THREE.Mesh(doorGeometry,doorMaterial);
-		door.position.z=z;
-		door.position.x=x;
-		door.position.y=y;
-		scene.add(door);
-	}
-
-	function displayMessage(str, ...options){
-		var container = div();
-		container.className = "box-cont";
-		var box = div();
-		box.className = "box";
-		
-		var optionDiv = div();
-		optionDiv.className = "options";
-		options.forEach(([name, handler]) => {
-			var a = make('a');
-			a.className = "option";
-			// var d = div();
-			a.innerText = name;
-			a.addEventListener('click', () => {
-				container.className += " fade-out";
-				setTimeout( () => {
-					container.remove();
-					handler();
-				}, 800);
-			});
-			// a.appendChild(d);
-			optionDiv.appendChild(a);
-		})
-		
-
-		var msgDiv = div();
-		msgDiv.className = "message";
-		msgDiv.innerHTML = '<p>' + str + '</p>';
-		box.appendChild(msgDiv);
-		box.appendChild(optionDiv);
-		container.appendChild(box);
-		document.body.appendChild(container);
-		if(optionDiv.children.length != 0)
-			optionDiv.children[0].focus();
-	}
-
-	function Obstacle(x, y, index, url, loader, score, type){
-		this.x = x;
-		this.y = y;
-		this.id = null;
-		this.index = index;
-		this.url = url;
-		this.obstacleMaterial = new THREE.MeshStandardMaterial({ color: "#FFF", transparent: true, alphaTest: 0.0 });
-		var alphaMap = new THREE.TextureLoader().load(url);
-		this.obstacleMaterial.alphaMap = alphaMap;
-		this.obstacleMaterial.alphaMap.magFilter = THREE.NearestFilter;
-		this.obstacleMaterial.alphaMap.wrapT = THREE.RepeatWrapping;
-		this.obstacleMaterial.alphaMap.repeat.y = 1;
-		this.score = score;
-		this.collected = false;
-		this.subjects = [];
-		this.type = type; // uses obstacleTypes[type]
-	}
-
-	Obstacle.prototype.action = function() {
-		console.log(this);
-		this.collected = true;
-		// alert("You collected Obstacle of ID : " + this.id +  "\n You get " +  this.score +  " points");
-		
-		// notify every listener
-		this.subjects.forEach(f => f(this));
-	};
-
-	Obstacle.prototype.hook = function(f){
-		this.subjects.push(f);
-	}
-
-	var obstacleTypes = [{
-		material: "https://cdn.wallpapersafari.com/30/15/ZlxWtg.png",
-		score: -5,
-		quantity: 4,
-	},
-	{
-		material: "https://d2v9y0dukr6mq2.cloudfront.net/video/thumbnail/3xEGOGX/videoblocks-3d-metal-mesh-metal-grid-fence-dynamic-steel-pipe-intertwined-on-black-background-animation-abstract-illustration-seamless-loop_sky-mfvnz_thumbnail-full01.png",
-		score: -10,
-		quantity: 4,
-	}]
 
 	// create obstacles
 	function createObstaclesList(empty_positions){		
 		const loader = new THREE.TextureLoader();
-		var rand_num = function(upper){
-			return Math.floor(Math.random()*(upper + 1));
-		}
+		
 
 		// create map with every position empty
-		//var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
-
-		function find_rand_empty(){
-			var x = rand_num(MAZE_DIMS - 1);
-			var y = rand_num(MAZE_DIMS - 1);
-			var a = 0;
-			while(empty_positions[x][y] != 0 && a < MAZE_DIMS*MAZE_DIMS){
-				a += 1;
-				x = rand_num(MAZE_DIMS - 1);
-				y = rand_num(MAZE_DIMS - 1);
-			}
-			if(a == MAZE_DIMS*MAZE_DIMS){
-				console.log("no empty spots left!");
-			}
-			return [x, y]
-		}
-
 		function _create_({material, score}, index, type){
-			var [x, y] = find_rand_empty();
+			var [x, y] = find_rand_empty(empty_positions);
 			empty_positions[x][y] = 1;
 			return new Obstacle(x, y, index, material, loader, score, type);
 		}
@@ -914,6 +646,8 @@
 
 		return obstacles;
 	}
+
+	
 
 
 	// place obstacle graphics on screen
@@ -934,30 +668,85 @@
 	   return obstacles;
 	}
 
-	// call if any collectible collided
-	function processObstacleCollisions(x, y,obstacles,scene){
-		obstacles.forEach(function(obstacle,index){
-			if(obstacle.x == x && obstacle.y == y){
-	         obstacle.action(); //Run the object's event
-	         var id=obstacle.id;
-	         //var obstacleObject = scene.getObjectById( obstacles.id );
-	         // scene.remove(obstacleObject); //Remove graphics from scene
-	         obstacles.splice(index,1); //Remove obstacle from list
-	    	}
-		    var obj;
-		    scene.traverse(function (object){	
-		     	if (object.id==id){
-		     		obj=object;
-		     	}
-		     });
-	    	scene.remove(obj);
-	 	});
-		return obstacles;
+	/***
+		See Process collisions defined below
+	****/
+	// // call if any collectible collided
+	// function processObstacleCollisions(x, y,obstacles,scene){
+	// 	obstacles.forEach(function(obstacle,index){
+	// 		if(obstacle.x == x && obstacle.y == y){
+	//          obstacle.action(); //Run the object's event
+	//          var id=obstacle.id;
+	//          //var obstacleObject = scene.getObjectById( obstacles.id );
+	//          // scene.remove(obstacleObject); //Remove graphics from scene
+	//          obstacles.splice(index,1); //Remove obstacle from list
+	    	
+	// 		    var obj;
+	// 		    scene.traverse(function (object){	
+	// 		     	if (object.id==id){
+	// 		     		obj = object;
+	// 		     	}
+	// 		     });
+	// 	    	scene.remove(obj);
+	//     	}
+	//  	});
+	// 	return obstacles;
+	// }
+
+	// function processPotionCollisions(x, y, potions, scene){
+	// 	console.log(potions)
+	// 	return potions.map(function(potion, index) {
+	// 		console.log("check", potion.x, potion.y, x, y)
+	// 		if(potion.x == x && potion.y == y){
+	// 			potion.action();
+	// 			var id = potion.id;
+				
+	// 			var obj;
+	// 			scene.traverse(function (object){	
+	// 			     	if (object.id==id){
+	// 			     		obj = object;
+	// 			     	}
+	// 		     });
+	// 			console.log(obj)
+	// 	    	scene.remove(obj);
+	// 	    	return null;
+	// 		}
+	// 		return potion;
+	// 	}).filter(e => e != null);
+	// }
+
+
+	// a function that checks collision with any item
+	// of type {x, y, action}
+	function processCollisions(x, y, items, scene){
+		return items.map(function(item, index) {
+			console.log("check", item, item.x, item.y, x, y)
+			if(item.x == x && item.y == y){
+				if(item.action)
+					item.action();
+				
+				var id = item.id;
+				var obj;
+				scene.traverse(function (object){	
+				     	if (object.id==id){
+				     		obj = object;
+				     	}
+			     });
+				console.log(obj)
+		    	scene.remove(obj);
+		    	return null;
+			}
+			return item;
+		}).filter(e => e != null);
 	}
 
 </script>
 
 <script src="js/utility.js"></script>
+<script src="js/Items.js"></script>
+<script src="js/itemTypes.js"></script>
+<script src="js/animation.js"></script>
+<script src="js/Managers.js"></script>
 
 </head>
 <body onload="game();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
