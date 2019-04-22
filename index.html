@@ -837,7 +837,7 @@ function Obstacle(x, y, index, url, loader, score, type){
 		this.id = null;
 		this.index = index;
 		this.url = url;
-		this.obstacleMaterial = new THREE.MeshStandardMaterial({ color: "#FFF", transparent: true, side: THREE.DoubleSide, alphaTest: 0.0 });
+		this.obstacleMaterial = new THREE.MeshStandardMaterial({ color: "#FFF", transparent: true, alphaTest: 0.0 });
 		var alphaMap = new THREE.TextureLoader().load(url);
 		this.obstacleMaterial.alphaMap = alphaMap;
 		this.obstacleMaterial.alphaMap.magFilter = THREE.NearestFilter;
