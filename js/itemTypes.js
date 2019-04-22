@@ -17,7 +17,7 @@ var potionTypes = [{
 
 
 var itemTypes = [{
-	material: "./images.jpeg",
+	material: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjJzLwvs5JHTGVuezxnv7_zy0qZdS2ytQ25LLMGgMt4bFERLgWCA",
 	score: 10,
 	quantity: 2,
 },

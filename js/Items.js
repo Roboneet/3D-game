@@ -14,16 +14,16 @@ Item.prototype.notify = function(){
 
 
 /*****
-	Collectable Item
+	collectible Item
 ****/
-// Collectable object constructor
-function Collectable(x, y, index, url, loader, score, type){
+// collectible object constructor
+function collectible(x, y, index, url, loader, score, type){
 	this.x = x;
 	this.y = y;
 	this.id = null;
 	this.index = index;
 	this.url = url;
-	this.collectableMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
+	this.collectibleMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
 	this.score = score;
 	this.collected = false;
 	this.subjects = [];
@@ -31,9 +31,9 @@ function Collectable(x, y, index, url, loader, score, type){
 }
 
 // new object with all elements of Item.prototype
-Collectable.prototype = Object.assign({}, Item.prototype);
+collectible.prototype = Object.assign({}, Item.prototype);
 
-Collectable.prototype.action = function() {
+collectible.prototype.action = function() {
 	this.collected = true;
 	this.notify();
 };
@@ -60,7 +60,7 @@ function Obstacle(x, y, index, url, loader, score, type){
 	this.type = type; // uses obstacleTypes[type]
 }
 
-Obstacle.prototype = Object.assign({}, Collectable.prototype);
+Obstacle.prototype = Object.assign({}, collectible.prototype);
 
 
 /*****
@@ -79,4 +79,4 @@ function Potion(x, y, index, material, geometry, type){
 }
 
 // new object with all elements of Item.prototype
-Potion.prototype = Object.assign({}, Collectable.prototype);
+Potion.prototype = Object.assign({}, collectible.prototype);

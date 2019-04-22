@@ -1,6 +1,6 @@
 <html>
 <head>
-	<title>into the Maze</title>
+	<title>Straight outta the Maze</title>
 	<link rel="stylesheet" href="./css/style.css" />
 	<script src="js/three.min.js"></script>
 
@@ -21,10 +21,10 @@
 	// GAME CONSTANTS
 	
 	
-	const WAITING = 1;
-	const TURNING_RIGHT = 2;
-	const TURNING_LEFT = 3;
-	const MOVING_FORWARD = 4;
+	const WAIT = 6;
+	const GO_RIGHT = 7;
+	const GO_LEFT = 8;
+	const GO_FORWARD = 9;
 	const FADING_OUT = 10;
 	const DONE = 11;
 	const FADING_IN = 13;
@@ -61,6 +61,7 @@
 
 	
 	var game = (function(MAZE_DIMS){
+		// game scope for a specific maze dimension
 		
 
 		playerInput = new Object();
@@ -89,9 +90,7 @@
 
 		Initial function that gets called to start the game
 
-		***/
-
-		
+		***/		
 		function runMaze(){
 		    // get HTML canvas element and set size
 		    var mazeCanvas = document.getElementById("mazeCanvas");
@@ -107,16 +106,16 @@
 		    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
 		 	placeWallGraphics(scene, mazeGrid);	    
 
-		    var collectables = createCollectiblesList(empty_positions);
-		    collectables=placeCollectableGraphics(scene, collectables);
+		    var collectibles = createCollectiblesList(empty_positions);
+		    collectibles=placecollectibleGraphics(scene, collectibles);
 		    var obstacles = createObstaclesList(empty_positions);
 		    obstacles=placeObstacleGraphics(scene, obstacles);
 		    
 		    var potions = magicPotion(empty_positions, scene);
 		    
-		    var inventory = new Inventory($$("#inventory"), collectables, potions);
+		    var inventory = new Inventory($$("#inventory"), collectibles, potions);
 
-		    var score_man = new ScoreManager($$("#score"), [...obstacles,...collectables], {
+		    var score_man = new ScoreManager($$("#score"), [...obstacles,...collectibles], {
 		    	aim: 200,
 		    	action: inventory.giveKey
 		    }, inventory.hasPotion, inventory.usePotion);
@@ -155,7 +154,7 @@
 						return 1;
 					}).filter( e => e < 1);
 		   			if(ops.length == 0){
-		   				state = WAITING;
+		   				state = WAIT;
 		   			}
 
 		   		}else if(state == SHAKING){
@@ -176,16 +175,16 @@
 		   			camera.position[a] += disp;
 		   			
 		   			if(shake.done()){
-		   				state = WAITING;
+		   				state = WAIT;
 		   			}
 		   		}
 
 
 		   		
-				if(state == WAITING){  // waiting for user input
+				if(state == WAIT){  // WAIT for user input
 					   // if player has given an input, make a move
 					if(playerInput.left){
-					   	state = TURNING_LEFT;
+					   	state = GO_LEFT;
 					   	switch(direction){
 					   		case NORTH:
 					   		direction = WEST;
@@ -203,7 +202,7 @@
 						   player.direction = direction; //Sync player and camera
 					}
 					else if(playerInput.right){
-						state = TURNING_RIGHT;
+						state = GO_RIGHT;
 						switch(direction){
 							case NORTH:
 							direction = EAST;
@@ -225,7 +224,7 @@
 							walkingDistance = 0;
 							startX = camera.position.x;
 							startZ = camera.position.z;
-							state = MOVING_FORWARD;
+							state = GO_FORWARD;
 							switch(direction){
 								case NORTH:
 								player.gridX--;
@@ -331,38 +330,38 @@
 					}
 				}
 
-				if(state == TURNING_LEFT){
+				if(state == GO_LEFT){
 					turningArc += Math.PI/2  * deltaTime/1000;
 					if(turningArc >= Math.PI/2){
 						turningArc = Math.PI/2;
 						currentDirection = currentDirection + turningArc;
 						turningArc = 0;
-						state = WAITING;
+						state = WAIT;
 					}
 
 					camera.rotation.y = currentDirection + turningArc;
 				}
 
-				if(state == TURNING_RIGHT){
+				if(state == GO_RIGHT){
 					turningArc += Math.PI/2  * deltaTime/1000;
 					if(turningArc >= Math.PI/2){
 						turningArc = Math.PI/2;
 						currentDirection = currentDirection - turningArc;
 						turningArc = 0;
-						state = WAITING;
+						state = WAIT;
 					}
 
 					camera.rotation.y = currentDirection - turningArc;
 				}
 
-				if(state == MOVING_FORWARD)
+				if(state == GO_FORWARD)
 				{
 
 					walkingDistance += 1 * deltaTime/1000;
 					if(walkingDistance >= 1){
 						walkingDistance = 1;
-						state = WAITING;
-						collectables=processCollisions(player.gridX, player.gridY,collectables,scene);
+						state = WAIT;
+						collectibles=processCollisions(player.gridX, player.gridY,collectibles,scene);
 						obstacles=processCollisions(player.gridX, player.gridY,obstacles,scene);
 						potions=processCollisions(player.gridX, player.gridY,potions,scene);
 
@@ -384,12 +383,12 @@
 					playerPointLight.position.x = camera.position.x;
 					playerPointLight.position.y = camera.position.y;
 					playerPointLight.position.z = camera.position.z;
-					// 	collectables.forEach(function(collectable){
+					// 	collectibles.forEach(function(collectible){
 						
-					//    var collectableObject = scene.getObjectById( collectables.id);
-					//    if (flag++<10) console.log(collectableObject.id);
-					//    collectableObject.rotation.x += 2 * deltaTime/1000;
-					//    collectableObject.rotation.y += 2 * deltaTime/1000;
+					//    var collectibleObject = scene.getObjectById( collectibles.id);
+					//    if (flag++<10) console.log(collectibleObject.id);
+					//    collectibleObject.rotation.x += 2 * deltaTime/1000;
+					//    collectibleObject.rotation.y += 2 * deltaTime/1000;
 
 					// });
 				}
@@ -537,26 +536,26 @@
 		}
 	}
 
-	// create collectables
+	// create collectibles
 	function createCollectiblesList(empty_positions){		
 		const loader = new THREE.TextureLoader();
 		function _create_({material, score}, index, type){
 			var [x, y] = find_rand_empty(empty_positions);
 			empty_positions[x][y] = 1;
-			return new Collectable(x, y, index, material, loader, score, type);
+			return new collectible(x, y, index, material, loader, score, type);
 		}
 
-		var collectables = [];
+		var collectibles = [];
 		var k = 0;
 		for(var i in itemTypes){
 			var item = itemTypes[i];
 			for(var j = 0; j < item.quantity; j++){
-				collectables.push(_create_(item, k, i));
+				collectibles.push(_create_(item, k, i));
 				k++;
 			}
 		}
 
-		return collectables;
+		return collectibles;
 	}
 
 	function placeBoxOnScene(scene, items, dims, name, materialName){
@@ -596,20 +595,20 @@
 	}
 
 
-	// place collectable graphics on screen
-	function placeCollectableGraphics(scene, collectables){
-	 	return placeBoxOnScene(scene, collectables, [0.25, 0.25, 0.25], 'collect', 'collectableMaterial');
+	// place collectible graphics on screen
+	function placecollectibleGraphics(scene, collectibles){
+	 	return placeBoxOnScene(scene, collectibles, [0.25, 0.25, 0.25], 'collect', 'collectibleMaterial');
 	}
 
 	// call if any collectible collided
-	function processCollectableCollisions(x, y,collectables,scene){
-		collectables.forEach(function(collectable,index){
-			if(collectable.x == x && collectable.y == y){
-	         collectable.action(); //Run the object's event
-	         var id=collectable.id;
-	         //var collectableObject = scene.getObjectById( collectables.id );
-	         // scene.remove(collectableObject); //Remove graphics from scene
-	         collectables.splice(index,1); //Remove collectable from list
+	function processcollectibleCollisions(x, y,collectibles,scene){
+		collectibles.forEach(function(collectible,index){
+			if(collectible.x == x && collectible.y == y){
+	         collectible.action(); //Run the object's event
+	         var id=collectible.id;
+	         //var collectibleObject = scene.getObjectById( collectibles.id );
+	         // scene.remove(collectibleObject); //Remove graphics from scene
+	         collectibles.splice(index,1); //Remove collectible from list
 	    	}
 		    var obj;
 		    scene.traverse(function (object){	
@@ -619,7 +618,7 @@
 		     });
 	    	scene.remove(obj);
 	 	});
-		return collectables;
+		return collectibles;
 	}
 
 

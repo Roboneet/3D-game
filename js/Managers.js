@@ -3,7 +3,7 @@
 	Score Manager
 ****/
 function ScoreManager(ele, items, target, hasPotion, potionUsed){
-	// hook a notification function on the collectables
+	// hook a notification function on the collectibles
 	items.forEach(m => m.hook(this.notification.bind(this)))
 	this.ele = ele;
 	var {aim, action}= target;
@@ -44,13 +44,13 @@ ScoreManager.prototype.dispose = function(){
 /*****
 	Inventory Manager
 ****/
-function Inventory(container, collectables, potions){
-	this.collectables = collectables;
+function Inventory(container, collectibles, potions){
+	this.collectibles = collectibles;
 	this.collectedTypes = {}
 	this.container = container;
 
-	// hook a notification function on the collectables
-	this.collectables.forEach(m => {
+	// hook a notification function on the collectibles
+	this.collectibles.forEach(m => {
 		this.collectedTypes[m.type] = false;
 		m.hook(this.notification.bind(this))
 	});
@@ -61,7 +61,7 @@ function Inventory(container, collectables, potions){
 	this.panel = {};
 	var scope = this;
 
-	this.collectables.map(ele => {
+	this.collectibles.map(ele => {
 		var o = scope.createDisplay(ele);
 		this.panel[ele.id] = o;
 		return o;
@@ -101,7 +101,7 @@ Inventory.prototype.hasPotion = function(){
 Inventory.prototype.createKey = function(){
 	var keyImage = "http://realpinkaz.com/wp-content/uploads/olde-key-clip-art-at-clker-vector-clip-art-online-royalty-key-cartoon.svg";
 	var d = document.createElement("div");
-	d.className = "collectable key";
+	d.className = "collectible key";
 	d.setAttribute('data-collected', false);
 	d.innerHTML = ('<div class="overlay"></div>' +
 		'<div class="material"><img src="' + keyImage + '"></div>');
@@ -111,18 +111,18 @@ Inventory.prototype.createKey = function(){
 Inventory.prototype.createDisplay = function(obj){
 	var {id, url, collected, score} = obj;
 	var d = document.createElement("div");
-	d.className = "collectable";
+	d.className = "collectible";
 	d.setAttribute('data-collected', collected);
 	d.innerHTML = ('<div class="overlay"><p> +' + score + '</p></div>' +
 	'<div class="material"><img src="' + url + '"></div>');
 	return d;
 }
 
-// notified by collectable when it is collected
-Inventory.prototype.notification = function(collectable){
-	// console.log("Inventory says ", collectable, "is collected");
-	this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
-	this.collectedTypes[collectable.type] = true;
+// notified by collectible when it is collected
+Inventory.prototype.notification = function(collectible){
+	// console.log("Inventory says ", collectible, "is collected");
+	this.panel[collectible.id].setAttribute('data-collected', collectible.collected);
+	this.collectedTypes[collectible.type] = true;
 }
 
 Inventory.prototype.collected_all_types = function(){
