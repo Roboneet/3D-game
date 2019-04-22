@@ -75,6 +75,7 @@
 		var flag=0;
 		var stop_render = false;
 		var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
+		empty_positions[0][0] = 1;
 		var shake;
 		
 
