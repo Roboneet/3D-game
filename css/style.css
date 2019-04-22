@@ -1,15 +1,22 @@
 *{
 	margin: 0;
-	transition: all 0.4s linear;
+	transition: all 1s linear;
 }
 body{
 	width: 100vw;
 	height: 100vh;
 }
+
+div#score.active{
+	/*right: 0;*/
+	top:0;
+}
+
+
 div#score{
 	position: absolute;
     right: 0;
-    top: 0;
+    top: -100%;
     background: #000;
 	opacity: 0.95;
     width: 200px;
@@ -37,15 +44,15 @@ div#score span{
 
 }
 
-/*div#inventory.active{
+div#inventory.active{
 	bottom: 0;
-	right: 0;
-}*/
+	/*right: 0;*/
+}
 
 div#inventory{
 	position: absolute;
-	bottom: 0%;
-	right: 0%;
+	bottom: -100%;
+	right: 0;
 	display: flex;
 	border-top-left-radius: 6px;
 	background: #000;
@@ -64,19 +71,21 @@ div#inventory{
 	margin: 10px;
 	position: relative;
 	background: #000;
-	
 }
 .overlay{
 	position: absolute;
 	top:0;
 	right:0;
-	
+	font-family: monospace;
 	background: transparent;
 	font-size: 0;
+	display: flex;
+    justify-content: center;
+    align-items: center;
 }
 .material img{
-	width: 50px;
-	height: 50px;
+	width: 60px;
+	height: 60px;
 }
 
 .collectable[data-collected=false] .overlay{
@@ -84,11 +93,7 @@ div#inventory{
 	opacity: 0.95;
 	border: 1px solid #88ff64;
 	color: #ddd;
-    font-family: monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.1em;
+    font-size: 1.3em;
     width: 100%;
 	height: 100%;
 }
@@ -102,11 +107,7 @@ div#inventory{
 .key .overlay{
 	border-color: #f00 !important;
 	border-radius: 50%;
-}
-
-.key .overlay{
 	transition: all 1s linear;
-	
 }
 
 .box-cont{
@@ -141,14 +142,15 @@ div#inventory{
 	        justify-content: space-evenly;
 }
 
-.box .options *{
+.box .options a{
 	margin: 10px;
+	cursor: pointer;
     /* border: 1px solid #fff; */
     padding: 10px;
     border-radius: 3px;
     transition: all 1s linear;
 }
 
-.box .option:hover{
+.box .option:hover, .box .option:focus{
 	background: #3c3c3c;
 }	

@@ -7,13 +7,17 @@
 <script>
 	// to select elements from html
 	var $$ = (e) => document.querySelector(e);
+	var $ = (p, e) => p.querySelector(e);
+	var make = (n) => document.createElement(n);
+	var div = () => make('div');
 	function addClass(ele, name){
-		if(ele.match(name) == null)
+		if(ele.className.match(name) == null)
 			ele.className += (" " + name);
 	}
 	function removeClass(ele, name){
-		if(ele.match(name) == null)
-			ele.className += (" " + name);
+		var c = ele.className
+		if(c.match(name) != null)
+			ele.className = c.replace(name, "");
 	}
 
 	// GAME CONSTANTS
@@ -23,8 +27,10 @@
 	const TURNING_RIGHT = 2;
 	const TURNING_LEFT = 3;
 	const MOVING_FORWARD = 4;
-	const FADING = 12;
+	const FADING_OUT = 10;
 	const DONE = 11;
+	const FADING_IN = 13;
+	const START = 14;
 
 	const NORTH = 100;
 	const EAST = 101;
@@ -35,7 +41,7 @@
 	var t = null;
 	var game = (function(){
 		playerInput = new Object();
-		var state = WAITING;	
+		var state = START;	
 		var currentDirection = 0;
 		var turningArc = 0;
 		var direction = NORTH;
@@ -78,23 +84,49 @@
 		    collectables=placeCollectableGraphics(scene, collectables);
 		    var inventory = new Inventory($$("#inventory"), collectables);
 
-		    var score_man = new ScoreManager($$("#score p"), collectables, {
+		    var score_man = new ScoreManager($$("#score"), collectables, {
 		    	aim: 0,
 		    	action: inventory.giveKey
 		    });
 		    var nobox = true;
 
-		    var door = createDoor(scene); // create door at 0,0,0
+		    createDoor(scene);
+		    createDoor(scene, -0.055)
 
 		   	// create Light source
 		   	var playerPointLight = new THREE.PointLight();
-		   	playerPointLight.position.set(0,0,0 );
-		   	scene.add( playerPointLight );
+		   	playerPointLight.position.set(0,0,0);
+		   	scene.add(playerPointLight);
 
 		   	var render = function () {
 		   		var now = Date.now();
 		   		var deltaTime = now - last_update;
 		   		last_update = now;
+		   		if(state == START){
+		   			scene.children.forEach( ({material}) => {
+						if(material){
+							material.transparent = true;	
+							material.opacity = 0;
+							return material.opacity;
+						}
+						return 0;
+					});
+
+					state = FADING_IN;
+		   		}else if(state == FADING_IN){
+		   			var ops = scene.children.map(({material}) => {
+						if(material){
+							material.transparent = true;	
+							material.opacity += 0.03;
+							return material.opacity;
+						}
+						return 1;
+					}).filter( e => e < 1);
+		   			if(ops.length == 0){
+		   				state = WAITING;
+		   			}
+
+		   		}
 
 		   		
 				if(state == WAITING){  // waiting for user input
@@ -162,17 +194,17 @@
 						// console.log(player);
 						if(inventory.hasKey && direction == NORTH
 							&& player.gridX == 0 && player.gridY == 0){
-							state = FADING;
+							state = FADING_OUT;
 							// console.log("Yay, level done!");
 						}
 					}
 				}
 
-				if(state == FADING){
+				if(state == FADING_OUT){
 					var ops = scene.children.map( ({material}) => {
 						if(material){
 							material.transparent = true;	
-							material.opacity -= 0.1;
+							material.opacity -= 0.03;
 							return material.opacity;
 						}
 						return 0;
@@ -186,7 +218,8 @@
 					if(nobox){
 						nobox = false;
 						var doNothing = () => {};
-						function startNewGame(){
+
+						function stopGame(){
 							// destroy current scene, camera etc
 							stop_render = true;
 
@@ -198,14 +231,14 @@
 							// from a discourse thread
 							renderer.dispose();
 							const cleanMaterial = material => {
-								console.log('dispose material!')
+								// console.log('dispose material!')
 								material.dispose()
 
 								// dispose textures
 								for (const key of Object.keys(material)) {
 									const value = material[key]
 									if (value && typeof value === 'object' && 'minFilter' in value) {
-										console.log('dispose texture!')
+										// console.log('dispose texture!')
 										value.dispose()
 									}
 								}
@@ -213,10 +246,8 @@
 
 							scene.traverse(object => {
 								if (!object.isMesh) return
-								
-								console.log('dispose geometry!')
+								// console.log('dispose geometry!')
 								object.geometry.dispose()
-
 								if (object.material.isMaterial) {
 									cleanMaterial(object.material)
 								} else {
@@ -229,13 +260,17 @@
 							camera = null;
 							renderer = null;
 							
-							inventory.dispose();
-							score_man.dispose();
-
-
-							game()
+							
 						}
-						displayMessage("Ready for the next one?", ["Yes", startNewGame], ["No", doNothing]);
+						inventory.dispose();
+						score_man.dispose();
+						// wait a few secs for suspense and animations
+						setTimeout(() => {
+							displayMessage("Ready for the next one?", ["Yes", () => {
+								stopGame();
+								game();
+							}], ["No", stopGame]) 
+						}, 400);
 					}
 				}
 
@@ -482,13 +517,14 @@
 		var {aim, action}= target;
 		this.aim = aim;
 		this.action = action;
+		addClass(this.ele, "active");
 		this.update(0);
 	}
 	
 	// notified by collectable when it is collected
 	ScoreManager.prototype.notification = function(collectable){
 		this.update(this.score + collectable.score);
-		console.log("ScoreManager says  score is ", this.score);
+		// console.log("ScoreManager says  score is ", this.score);
 		if(this.score >= this.aim){
 			this.action();
 		}
@@ -496,7 +532,12 @@
 
 	ScoreManager.prototype.update = function(n){
 		this.score = n;
-		this.ele.innerText = this.score;
+		$(this.ele, "p").innerText = this.score;
+	}
+
+	ScoreManager.prototype.dispose = function(){
+		console.log("dispose score manager");
+		removeClass(this.ele, "active");		
 	}
 
 	/*****
@@ -530,8 +571,11 @@
 		// will be called by another function.
 		// so, bind this to my scope.
 		this.giveKey = this.giveKey.bind(this);
+		addClass(container, "active");
 
 	}
+
+
 
 	Inventory.prototype.createKey = function(){
 		var keyImage = "http://realpinkaz.com/wp-content/uploads/olde-key-clip-art-at-clker-vector-clip-art-online-royalty-key-cartoon.svg";
@@ -555,7 +599,7 @@
 
 	// notified by collectable when it is collected
 	Inventory.prototype.notification = function(collectable){
-		console.log("Inventory says ", collectable, "is collected");
+		// console.log("Inventory says ", collectable, "is collected");
 		this.panel[collectable.id].setAttribute('data-collected', collectable.collected);
 		this.collectedTypes[collectable.type] = true;
 	}
@@ -577,9 +621,13 @@
 	}
 
 	Inventory.prototype.dispose = function(){
-
-		var c = Array.from(this.container.children);
-		c.forEach(e => e.remove());
+		console.log("dispose inventory");
+		removeClass(this.container, "active");
+		var scope = this;
+		setTimeout(() => {
+			var c = Array.from(scope.container.children);
+			c.forEach(e => e.remove());
+		}, 1000);
 	}
 
 
@@ -727,7 +775,7 @@
 		return collectables;
 	}
 
-	function createDoor(scene){
+	function createDoor(scene, x=-0.3, y=0, z=-0.465){
 		var size = (x) => [x, 2*x];
 		var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
 		// scene.add(doorGeometry);
@@ -735,14 +783,14 @@
 		const loader = new THREE.TextureLoader();
 		var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
 		var door = new THREE.Mesh(doorGeometry,doorMaterial);
-		door.position.z=-0.465;
-		door.position.x=-0.3;
-		door.position.y=0;
+		door.position.z=z;
+		door.position.x=x;
+		door.position.y=y;
 		scene.add(door);
 	}
 
 	function displayMessage(str, ...options){
-		var div = () => document.createElement('div');
+		
 		var container = div();
 		container.className = "box-cont";
 		var box = div();
@@ -751,18 +799,22 @@
 		var optionDiv = div();
 		optionDiv.className = "options";
 		options.forEach(([name, handler]) => {
-			var d = div();
-			d.className = "option";
-			d.innerText = name;
-			d.addEventListener('click', () => {
+			var a = make('a');
+			a.className = "option";
+			// var d = div();
+			a.innerText = name;
+			a.addEventListener('click', () => {
 				container.className += " fade-out";
 				setTimeout( () => {
 					container.remove();
 					handler();
 				}, 800);
 			});
-			optionDiv.appendChild(d)
+			// a.appendChild(d);
+			optionDiv.appendChild(a);
 		})
+		
+
 		var msgDiv = div();
 		msgDiv.className = "message";
 		msgDiv.innerHTML = '<p>' + str + '</p>';
@@ -770,6 +822,8 @@
 		box.appendChild(optionDiv);
 		container.appendChild(box);
 		document.body.appendChild(container);
+		if(optionDiv.children.length != 0)
+			optionDiv.children[0].focus();
 	}
 
 
