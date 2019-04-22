@@ -88,7 +88,7 @@
 		    obstacles=placeObstacleGraphics(scene, obstacles);
 		    var inventory = new Inventory($$("#inventory"), collectables);
 
-		    var score_man = new ScoreManager($$("#score"), collectables, {
+		    var score_man = new ScoreManager($$("#score"), [...obstacles,...collectables], {
 		    	aim: 0,
 		    	action: inventory.giveKey
 		    });
@@ -456,7 +456,6 @@
 
 	// place wall graphics on screen
 	function placeWallGraphics(scene, mazeGrid){
-
 		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
 		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
@@ -514,10 +513,10 @@
 	/*****
 		Score Manager
 	****/
-	function ScoreManager(ele, collectables, target){
+	function ScoreManager(ele, items, target){
 
 		// hook a notification function on the collectables
-		collectables.forEach(m => m.hook(this.notification.bind(this)))
+		items.forEach(m => m.hook(this.notification.bind(this)))
 		this.ele = ele;
 		var {aim, action}= target;
 		this.aim = aim;
@@ -526,9 +525,9 @@
 		this.update(0);
 	}
 	
-	// notified by collectable when it is collected
-	ScoreManager.prototype.notification = function(collectable){
-		this.update(this.score + collectable.score);
+	// notified by item when it is collected
+	ScoreManager.prototype.notification = function(item){
+		this.update(this.score + item.score);
 		// console.log("ScoreManager says  score is ", this.score);
 		if(this.score >= this.aim){
 			this.action();
@@ -669,12 +668,12 @@
 	var itemTypes = [{
 		material: "./images.jpeg",
 		score: 10,
-		quantity: 4,
+		quantity: 2,
 	},
 	{
 		material: "https://previews.123rf.com/images/iloveotto/iloveotto1703/iloveotto170301151/73964767-brown-antique-wall-materials-textures.jpg",
 		score: 20,
-		quantity: 4,
+		quantity: 2,
 	},
 	{
 		material: "https://www.textures.com/system/gallery/photos/Substance/127268/Substance0079_5_download600.jpg",
@@ -684,12 +683,12 @@
 	{
 		material: 'https://farm3.staticflickr.com/2546/4175426037_7988483c39.jpg',
 		score: 40,
-		quantity: 2,
+		quantity: 1,
 	},
 	{
 		material: "https://i.pinimg.com/originals/8f/0d/ab/8f0dab62e8e3a0485e02d22b0eb69c7e.jpg",
 		score: 50,
-		quantity: 2,
+		quantity: 1,
 	},
 	{
 		material: "https://www.sketchuptextureclub.com/public/texture_f/texture-wrinkled-paper-seamless.jpg",
@@ -795,7 +794,6 @@
 	}
 
 	function displayMessage(str, ...options){
-		
 		var container = div();
 		container.className = "box-cont";
 		var box = div();
@@ -831,7 +829,7 @@
 			optionDiv.children[0].focus();
 	}
 
-function Obstacle(x, y, index, url, loader, score, type){
+	function Obstacle(x, y, index, url, loader, score, type){
 		this.x = x;
 		this.y = y;
 		this.id = null;
