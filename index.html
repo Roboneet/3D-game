@@ -19,7 +19,7 @@
 	}
 
 	// GAME CONSTANTS
-	const MAZE_DIMS = 10;
+	
 	
 	const WAITING = 1;
 	const TURNING_RIGHT = 2;
@@ -60,7 +60,7 @@
 	}
 
 	
-	var game = (function(){
+	var game = (function(MAZE_DIMS){
 		
 
 		playerInput = new Object();
@@ -325,7 +325,7 @@
 						setTimeout(() => {
 							displayMessage("Ready for the next one?", ["Yes", () => {
 								stopGame();
-								game();
+								game(MAZE_DIMS + 2);
 							}], ["No", stopGame]) 
 						}, 400);
 					}
@@ -750,7 +750,7 @@
 <script src="js/Managers.js"></script>
 
 </head>
-<body onload="game();" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
+<body onload="game(10);" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
 	<div id="score"><span>Score</span><p></p></div>
 	<canvas id="mazeCanvas" width=1300 height=600></canvas>
 	<div id="inventory"></div>
