@@ -73,7 +73,7 @@ function createDoor(scene, x=-0.3, y=0, z=-0.465){
    // scene.add(doorGeometry);
 
    const loader = new THREE.TextureLoader();
-   var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('http://textures101.com/textures/Doors/Wooden_Doors/Single_Old/2011/6/13/tn1_doormossy_fwhqk.jpg'),});
+   var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('./images/door.jpg'),});
    var door = new THREE.Mesh(doorGeometry,doorMaterial);
    door.position.z=z;
    door.position.x=x;

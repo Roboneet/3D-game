@@ -99,7 +99,7 @@ Inventory.prototype.hasPotion = function(){
 }
 
 Inventory.prototype.createKey = function(){
-	var keyImage = "http://realpinkaz.com/wp-content/uploads/olde-key-clip-art-at-clker-vector-clip-art-online-royalty-key-cartoon.svg";
+	var keyImage = "./images/key.svg";
 	var d = document.createElement("div");
 	d.className = "collectible key";
 	d.setAttribute('data-collected', false);

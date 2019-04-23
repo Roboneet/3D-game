@@ -484,7 +484,7 @@
 	function placeWallGraphics(scene, mazeGrid){
 		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
 		const loader = new THREE.TextureLoader();
-		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS2zL8u2_YcU9nXs1KpYGrDWqRO3L55FC4rnewIqV6AC7TjzdHO2w'),});
+		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('./images/wall.jpg'),});
 
 		mazeGrid.forEach(function(mazeRow, rowCount){
 			mazeRow.forEach(function(mazeCell, colCount){
@@ -498,7 +498,7 @@
 					placeWall(colCount, rowCount, 'w');
 				var floorGeometry=new THREE.PlaneGeometry(1,1,0.1);
 				const loader = new THREE.TextureLoader();
-				var floorMaterial = new THREE.MeshPhongMaterial({map: loader.load('https://www.tonytextures.com/free-texture-gallery/stone/Stone_Texture_A_P2140754.JPG'),});
+				var floorMaterial = new THREE.MeshPhongMaterial({map: loader.load('./images/floor.jpg'),});
 				var floor= new THREE.Mesh(floorGeometry,floorMaterial);
 				floor.position.z=rowCount;
 				floor.position.x=colCount;

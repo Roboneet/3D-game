@@ -12,7 +12,7 @@ You are trapped in a maze with cool collectibles and harmful obstacles. You need
 - Use `enter` key to open the door
 
 Authors: 
-Piyali Manna [2016A8PS0226P]
+Piyali Manna [2016A3PS0226P]
 Neethu Mariya Joy [2016A7PS0119P]
 
 
