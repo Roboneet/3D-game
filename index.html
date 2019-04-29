@@ -1,8 +1,165 @@
 <html>
 <head>
 	<title>Straight outta the Maze</title>
-	<link rel="stylesheet" href="./css/style.css" />
-	<script src="js/three.min.js"></script>
+	<style>
+	*{
+		margin: 0;
+		transition: all 1s linear;
+	}
+	body{
+		width: 100vw;
+		height: 100vh;
+	}
+
+	div#score.active{
+		/*right: 0;*/
+		top:0;
+	}
+
+
+	div#score{
+		position: absolute;
+	    right: 0;
+	    top: -100%;
+	    background: #000;
+		opacity: 0.95;
+	    width: 200px;
+	    height: 70px;
+	    border-bottom-left-radius: 6px;
+	    border-left: 2px solid #fff;
+	    border-bottom: 5px solid #fff;
+	    color: #88ff64;
+	    text-align: center;
+	    vertical-align: middle;
+	    /* justify-content: center; */
+	    display: flex;
+	    justify-content: center;
+	    align-items: center;
+	    font-size: 2em;
+	    font-family: monospace;
+	}
+	div#score span{
+		position: absolute;
+		top:0;
+		left: 0;
+		font-size: 0.75em;
+		font-variant: small-caps;
+		padding: 3px 6px;
+
+	}
+
+	div#inventory.active{
+		bottom: 0;
+		/*right: 0;*/
+	}
+
+	div#inventory{
+		position: absolute;
+		bottom: -100%;
+		right: 0;
+		display: flex;
+		border-top-left-radius: 6px;
+		background: #000;
+		opacity: 0.95;
+		border-left: 2px solid #fff;
+		border-top: 2px solid #fff;
+		padding: 10px;
+		/*width: 300px;*/
+		flex-wrap: wrap;
+		/*width: fit-content;*/
+		transition: all 1s linear;
+	}
+
+	.collectible{
+		/*padding: 10px;*/
+		margin: 10px;
+		position: relative;
+		background: #000;
+	}
+	.overlay{
+		position: absolute;
+		top:0;
+		right:0;
+		font-family: monospace;
+		background: transparent;
+		font-size: 0;
+		display: flex;
+	    justify-content: center;
+	    align-items: center;
+	}
+	.material img{
+		width: 60px;
+		height: 60px;
+	}
+
+	.collectible[data-collected=false] .overlay{
+		background: #000;
+		opacity: 0.95;
+		border: 1px solid #88ff64;
+		color: #ddd;
+	    font-size: 1.3em;
+	    width: 100%;
+		height: 100%;
+	}
+
+	.key{
+		background: #fff;
+	    /*border: 2px solid #f00; */
+	    border-radius: 50%;
+	}
+
+	.key .overlay{
+		border-color: #f00 !important;
+		border-radius: 50%;
+		transition: all 1s linear;
+	}
+
+	.box-cont{
+		position: absolute;
+	    display: flex;
+	    -webkit-justify-content: center;
+	    justify-content: center;
+	    align-items: center;
+	    background: #000;
+	    top: 0;
+	    left: 0;
+	    width: 100vw;
+	    height: 100vh;
+	    color: #88ff64;
+	    opacity: 1;
+	    transition: all 1s linear;
+	}
+
+	.box-cont.fade-out{
+		opacity: 0;
+	}
+
+	.box{
+		/* border: 1px solid #fff; */
+	    font-family: arial;
+	    padding: 10px;
+	    border-radius: 6px;
+	}
+	.box .options{
+		display: flex;
+		-webkit-justify-content: space-evenly;
+		        justify-content: space-evenly;
+	}
+
+	.box .options a{
+		margin: 10px;
+		cursor: pointer;
+	    /* border: 1px solid #fff; */
+	    padding: 10px;
+	    border-radius: 3px;
+	    transition: all 1s linear;
+	}
+
+	.box .option:hover, .box .option:focus{
+		background: #3c3c3c;
+	}	
+	</style>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.min.js"></script>
 
 <script>
 	// to select elements from html
@@ -742,11 +899,452 @@
 
 </script>
 
-<script src="js/utility.js"></script>
-<script src="js/Items.js"></script>
-<script src="js/itemTypes.js"></script>
-<script src="js/animation.js"></script>
-<script src="js/Managers.js"></script>
+<script>
+	/***
+	change player input on key down
+***/
+function doKeyDown(event){
+   var keynum;
+
+   if(window.event){ //Browser is IE
+      keynum = event.keyCode;
+   }
+   else{
+      keynum = event.which;
+   }
+
+   if(keynum == 37){
+      playerInput.left = 1;
+   }
+   else if(keynum == 38){
+      playerInput.up = 1;
+   }
+   else if(keynum == 39){
+      playerInput.right = 1;
+   }
+   else if(keynum == 40){
+      playerInput.down = 1;
+   }else if(keynum == 13){
+      playerInput.enter = 1;
+   }
+}
+
+
+/***
+	change player input on key up
+***/
+function doKeyUp(event){
+   var keynum;
+   
+   if(window.event){ //Browser is IE
+      keynum = event.keyCode;
+   }
+   else{
+      keynum = event.which;
+   }
+
+   if(keynum == 37){
+      playerInput.left = 0;
+   }
+   else if(keynum == 38){
+      playerInput.up = 0;
+   }
+   else if(keynum == 39){
+      playerInput.right = 0;
+   }
+   else if(keynum == 40){
+      playerInput.down = 0;
+   }else if(keynum == 13){
+      playerInput.enter = 0;
+   }
+}
+
+function addClass(ele, name){
+   if(ele.className.match(name) == null)
+      ele.className += (" " + name);
+}
+function removeClass(ele, name){
+   var c = ele.className
+   if(c.match(name) != null)
+      ele.className = c.replace(name, "");
+}
+
+function createDoor(scene, x=-0.3, y=0, z=-0.465){
+   var size = (x) => [x, 2*x];
+   var doorGeometry = new THREE.PlaneGeometry(...size(0.25),0.1);
+   // scene.add(doorGeometry);
+
+   const loader = new THREE.TextureLoader();
+   var doorMaterial = new THREE.MeshPhongMaterial({map: loader.load('./images/door.jpg'),});
+   var door = new THREE.Mesh(doorGeometry,doorMaterial);
+   door.position.z=z;
+   door.position.x=x;
+   door.position.y=y;
+   scene.add(door);
+}
+
+function displayMessage(str, ...options){
+   var container = div();
+   container.className = "box-cont";
+   var box = div();
+   box.className = "box";
+   
+   var optionDiv = div();
+   optionDiv.className = "options";
+   options.forEach(([name, handler]) => {
+      var a = make('a');
+      a.className = "option";
+      // var d = div();
+      a.innerText = name;
+      a.addEventListener('click', () => {
+         container.className += " fade-out";
+         setTimeout( () => {
+            container.remove();
+            handler();
+         }, 800);
+      });
+      // a.appendChild(d);
+      optionDiv.appendChild(a);
+   })
+   
+
+   var msgDiv = div();
+   msgDiv.className = "message";
+   msgDiv.innerHTML = '<p>' + str + '</p>';
+   box.appendChild(msgDiv);
+   box.appendChild(optionDiv);
+   container.appendChild(box);
+   document.body.appendChild(container);
+   if(optionDiv.children.length != 0)
+      optionDiv.children[0].focus();
+}
+
+function bind(o, f){
+   return o[f].bind(o);
+}
+</script>
+<script >
+	// prototype class
+/*****
+	General Item
+****/
+function Item(){}
+
+Item.prototype.hook = function(f){
+	this.subjects.push(f);
+}
+
+Item.prototype.notify = function(){
+	this.subjects.forEach(f => f(this));
+}
+
+
+/*****
+	collectible Item
+****/
+// collectible object constructor
+function collectible(x, y, index, url, loader, score, type){
+	this.x = x;
+	this.y = y;
+	this.id = null;
+	this.index = index;
+	this.url = url;
+	this.collectibleMaterial = new THREE.MeshStandardMaterial( {map: loader.load(url)});
+	this.score = score;
+	this.collected = false;
+	this.subjects = [];
+	this.type = type; // uses itemTypes[type]
+}
+
+// new object with all elements of Item.prototype
+collectible.prototype = Object.assign({}, Item.prototype);
+
+collectible.prototype.action = function() {
+	this.collected = true;
+	this.notify();
+};
+
+
+/*****
+	Obstacle Item
+****/
+function Obstacle(x, y, index, url, loader, score, type){
+	this.x = x;
+	this.y = y;
+	this.id = null;
+	this.index = index;
+	this.url = url;
+	this.obstacleMaterial = new THREE.MeshStandardMaterial({ color: "#FFF", transparent: true, alphaTest: 0.0 });
+	var alphaMap = new THREE.TextureLoader().load(url);
+	this.obstacleMaterial.alphaMap = alphaMap;
+	this.obstacleMaterial.alphaMap.magFilter = THREE.NearestFilter;
+	this.obstacleMaterial.alphaMap.wrapT = THREE.RepeatWrapping;
+	this.obstacleMaterial.alphaMap.repeat.y = 1;
+	this.score = score;
+	this.collected = false;
+	this.subjects = [];
+	this.type = type; // uses obstacleTypes[type]
+}
+
+Obstacle.prototype = Object.assign({}, collectible.prototype);
+
+
+/*****
+	Potion Item
+****/
+function Potion(x, y, index, material, geometry, type){
+	this.x = x;
+	this.y = y;
+	this.id = null;
+	this.index = index;
+	this.material = material;
+	this.geometry = geometry;
+	this.collected = false;
+	this.subjects = [];
+	this.type = type; // uses itemTypes[type]
+}
+
+// new object with all elements of Item.prototype
+Potion.prototype = Object.assign({}, collectible.prototype);
+
+</script>
+<script>
+	
+var obstacleTypes = [{
+	material: "./images/o1.png",
+	score: -5,
+	quantity: 4,
+},
+{
+	material: "./images/o2.png",
+	score: -10,
+	quantity: 4,
+}]
+
+var potionTypes = [{
+	material: "./images/p1.jpg",
+	quantity: 1
+}]
+
+
+var itemTypes = [{
+	material: "./images/i1.jpg",
+	score: 10,
+	quantity: 2,
+},
+{
+	material: "./images/i2.jpg",
+	score: 20,
+	quantity: 2,
+},
+{
+	material: "./images/i3.jpg",
+	score: 30,
+	quantity: 2,
+},
+{
+	material: "./images/i4.jpg",
+	score: 40,
+	quantity: 1,
+},
+{
+	material: "./images/i5.jpg",
+	score: 50,
+	quantity: 1,
+},
+{
+	material: "./images/i6.jpg",
+	score: 100,
+	quantity: 1,
+}]
+</script>
+<script>
+	function Shaker(r, A=0.3, phi=0, omega=1){
+	this.A = A;
+	this.phi = phi;
+	this.omega = omega;
+	this.d = -A/r;
+	this.t = 0;
+	this.inc = 2*PI/r;
+	this.calculate();
+}
+
+Shaker.prototype.value = function(){
+	return this.val;
+}	
+
+Shaker.prototype.update = function(){
+	this.A += this.d;
+	// console.log(this.A);
+	this.t += this.inc;
+	this.calculate();
+}
+
+Shaker.prototype.calculate = function(){
+	var {A, phi, omega, t} = this;
+	this.val = A*sin(omega*t + phi);
+}
+
+Shaker.prototype.done = function(){
+	return this.t >= 2*PI;
+}
+</script>
+<script>
+	
+
+/*****
+	Score Manager
+****/
+function ScoreManager(ele, items, target, hasPotion, potionUsed){
+	// hook a notification function on the collectibles
+	items.forEach(m => m.hook(this.notification.bind(this)))
+	this.ele = ele;
+	var {aim, action}= target;
+	this.aim = aim;
+	this.action = action;
+	this.hasPotion = hasPotion;
+	this.potionUsed = potionUsed;
+	addClass(this.ele, "active");
+	this.update(0);
+}
+
+// notified by item when it is collected
+ScoreManager.prototype.notification = function(item){
+	console.log(item.score);
+	if(item.score < 0 && this.hasPotion()){
+
+		this.potionUsed();
+		return;
+	}
+	console.log(this.hasPotion());
+	this.update(this.score + item.score);
+	// console.log("ScoreManager says  score is ", this.score);
+	if(this.score >= this.aim){
+		this.action();
+	}
+}
+
+ScoreManager.prototype.update = function(n){
+	this.score = n;
+	$(this.ele, "p").innerText = this.score;
+}
+
+ScoreManager.prototype.dispose = function(){
+	console.log("dispose score manager");
+	removeClass(this.ele, "active");		
+}
+
+/*****
+	Inventory Manager
+****/
+function Inventory(container, collectibles, potions){
+	this.collectibles = collectibles;
+	this.collectedTypes = {}
+	this.container = container;
+
+	// hook a notification function on the collectibles
+	this.collectibles.forEach(m => {
+		this.collectedTypes[m.type] = false;
+		m.hook(this.notification.bind(this))
+	});
+	potions.forEach(m => {
+		m.hook(this.addPotion.bind(this));
+	})
+
+	this.panel = {};
+	var scope = this;
+
+	this.collectibles.map(ele => {
+		var o = scope.createDisplay(ele);
+		this.panel[ele.id] = o;
+		return o;
+	}).forEach(ele => {
+		container.appendChild(ele);
+	})
+	this.key = this.createKey();
+	container.appendChild(this.key);
+
+	this.hasKey = false;
+
+	// will be called by another function.
+	// so, bind this to my scope.
+	this.giveKey = this.giveKey.bind(this);
+	this.addPotion = this.addPotion.bind(this);
+	this.usePotion = this.usePotion.bind(this);
+	this.hasPotion = this.hasPotion.bind(this);
+
+	addClass(container, "active");
+	this.potion = 0;
+}
+
+Inventory.prototype.addPotion = function(){
+	
+	this.potion += 1;
+}
+
+Inventory.prototype.usePotion = function(){
+	this.potion -= 1;
+}
+
+Inventory.prototype.hasPotion = function(){
+	
+	return this.potion > 0;
+}
+
+Inventory.prototype.createKey = function(){
+	var keyImage = "./images/key.svg";
+	var d = document.createElement("div");
+	d.className = "collectible key";
+	d.setAttribute('data-collected', false);
+	d.innerHTML = ('<div class="overlay"></div>' +
+		'<div class="material"><img src="' + keyImage + '"></div>');
+	return d;
+}
+
+Inventory.prototype.createDisplay = function(obj){
+	var {id, url, collected, score} = obj;
+	var d = document.createElement("div");
+	d.className = "collectible";
+	d.setAttribute('data-collected', collected);
+	d.innerHTML = ('<div class="overlay"><p> +' + score + '</p></div>' +
+	'<div class="material"><img src="' + url + '"></div>');
+	return d;
+}
+
+// notified by collectible when it is collected
+Inventory.prototype.notification = function(collectible){
+	// console.log("Inventory says ", collectible, "is collected");
+	this.panel[collectible.id].setAttribute('data-collected', collectible.collected);
+	this.collectedTypes[collectible.type] = true;
+}
+
+Inventory.prototype.collected_all_types = function(){
+	var types = this.collectedTypes;
+	for(var ct in types){
+		if(!types[ct])return false;
+	}
+	return true;
+}
+
+Inventory.prototype.giveKey = function(){
+	if(this.hasKey)return;
+	
+	this.hasKey = true;
+	this.key.setAttribute('data-collected', true);
+
+}
+
+Inventory.prototype.dispose = function(){
+	
+	removeClass(this.container, "active");
+	var scope = this;
+	setTimeout(() => {
+		var c = Array.from(scope.container.children);
+		c.forEach(e => e.remove());
+	}, 1000);
+}
+
+</script>
 
 </head>
 <body onload="game(10);" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
