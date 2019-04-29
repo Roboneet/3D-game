@@ -1,6 +1,6 @@
 <html>
 <head>
-	<title>Straight outta the Maze</title>
+	<title>Straight outta the maze_path</title>
 	<style>
 	*{
 		margin: 0;
@@ -217,8 +217,8 @@
 	}
 
 	
-	var game = (function(MAZE_DIMS){
-		// game scope for a specific maze dimension
+	var game = (function(maze_path_DIMS){
+		// game scope for a specific maze_path dimension
 		
 
 		playerInput = new Object();
@@ -232,7 +232,7 @@
 		var last_update = Date.now();
 		var flag=0;
 		var stop_render = false;
-		var empty_positions = (new Array(MAZE_DIMS)).fill(0).map(() => new Array(MAZE_DIMS).fill(0))
+		var empty_positions = (new Array(maze_path_DIMS)).fill(0).map(() => new Array(maze_path_DIMS).fill(0))
 		empty_positions[0][0] = 1;
 		var shake;
 		
@@ -248,20 +248,20 @@
 		Initial function that gets called to start the game
 
 		***/		
-		function runMaze(){
+		function runmaze_path(){
 		    // get HTML canvas element and set size
-		    var mazeCanvas = document.getElementById("mazeCanvas");
-		    mazeCanvas.width = document.body.offsetWidth;
-		    mazeCanvas.height = document.body.offsetHeight;
+		    var maze_pathCanvas = document.getElementById("maze_pathCanvas");
+		    maze_pathCanvas.width = document.body.offsetWidth;
+		    maze_pathCanvas.height = document.body.offsetHeight;
 
 		    // create scene, WEBGL renderer and camera
 		    var scene = new THREE.Scene();
-		    var renderer = new THREE.WebGLRenderer({ canvas: mazeCanvas });
-		    var camera = new THREE.PerspectiveCamera( 75, mazeCanvas.width/mazeCanvas.height, 0.1, 1000 );
+		    var renderer = new THREE.WebGLRenderer({ canvas: maze_pathCanvas });
+		    var camera = new THREE.PerspectiveCamera( 75, maze_pathCanvas.width/maze_pathCanvas.height, 0.1, 1000 );
 		    t = camera;
 
-		    var mazeGrid = createMazeGrid(MAZE_DIMS, MAZE_DIMS);
-		 	placeWallGraphics(scene, mazeGrid);	    
+		    var maze_pathGrid = createmaze_pathGrid(maze_path_DIMS, maze_path_DIMS);
+		 	placeWallGraphics(scene, maze_pathGrid);	    
 
 		    var collectibles = createCollectiblesList(empty_positions);
 		    collectibles=placecollectibleGraphics(scene, collectibles);
@@ -377,7 +377,7 @@
 					   player.direction = direction; //Sync player and camera
 					}
 					else if (playerInput.up ){
-						if(validMove(mazeGrid, player.gridX, player.gridY, player.direction)){
+						if(validMove(maze_pathGrid, player.gridX, player.gridY, player.direction)){
 							walkingDistance = 0;
 							startX = camera.position.x;
 							startZ = camera.position.z;
@@ -481,7 +481,7 @@
 						setTimeout(() => {
 							displayMessage("Ready for the next one?", ["Yes", () => {
 								stopGame();
-								game(MAZE_DIMS + 2);
+								game(maze_path_DIMS + 2);
 							}], ["No", stopGame]) 
 						}, 400);
 					}
@@ -565,93 +565,93 @@
 
 			render();
 		}
-		runMaze()
+		runmaze_path()
 	});
 
 	
 
 	// check if move is
-	function validMove(mazeGrid, x, y, direction){
+	function validMove(maze_pathGrid, x, y, direction){
 		if(direction == NORTH)
 		{
-			return !mazeGrid[x][y].northWall;
+			return !maze_pathGrid[x][y].north_walls;
 		}
 		else if(direction == EAST)
 		{
-			return !mazeGrid[x][y].eastWall;
+			return !maze_pathGrid[x][y].east_walls;
 		}
 		else if(direction == SOUTH)
 		{
-			return !mazeGrid[x][y].southWall;
+			return !maze_pathGrid[x][y].south_walls;
 		}
 		else if(direction == WEST)
 		{
-			return !mazeGrid[x][y].westWall;
+			return !maze_pathGrid[x][y].west_walls;
 		}
 		return false;
 	}
 
 
-	// create maze
-	function createMazeGrid(width, height){
-		function MazeCell(northWall, eastWall, southWall, westWall){
-			this.northWall = northWall;
-			this.eastWall = eastWall;
-			this.southWall = southWall;
-			this.westWall = westWall;
+	// create maze_path
+	function createmaze_pathGrid(width, height){
+		function maze_pathCell(north_walls, east_walls, south_walls, west_walls){
+			this.north_walls = north_walls;
+			this.east_walls = east_walls;
+			this.south_walls = south_walls;
+			this.west_walls = west_walls;
 		}
-		var mazeGrid = Array(height);
+		var maze_pathGrid = Array(height);
 
 		for( var i = 0; i<height; i++){
 			var row = Array(width);
 			for(var j = 0; j<width; j++){
-				row[j] = new MazeCell(true,true,true,true);
+				row[j] = new maze_pathCell(true,true,true,true);
 			}
-			mazeGrid[i] = row;
+			maze_pathGrid[i] = row;
 
 		}
 		for( var i = 0; i<height; i++){
 			for(var j = 0; j<width; j++){
 		      if(i>0 && j>0){ //If it is not an edge cell open a passage randomly
 		      	if(Math.random()>0.5){
-		      		mazeGrid[i][j].northWall=false;
-		      		mazeGrid[i-1][j].southWall=false;
+		      		maze_pathGrid[i][j].north_walls=false;
+		      		maze_pathGrid[i-1][j].south_walls=false;
 		      	}
 		      	else{
-		      		mazeGrid[i][j].westWall=false;
-		      		mazeGrid[i][j-1].eastWall=false;
+		      		maze_pathGrid[i][j].west_walls=false;
+		      		maze_pathGrid[i][j-1].east_walls=false;
 		      	}
 		      }
 		      else if(j > 0){ //If it is along the north edge open a west passage
-		      	mazeGrid[i][j].westWall=false;
-		      	mazeGrid[i][j-1].eastWall=false;
+		      	maze_pathGrid[i][j].west_walls=false;
+		      	maze_pathGrid[i][j-1].east_walls=false;
 		      }
 		      else if(i > 0){ //If it is along the west edge open a north passage
-		      	mazeGrid[i][j].northWall=false;
-		      	mazeGrid[i-1][j].southWall=false;
+		      	maze_pathGrid[i][j].north_walls=false;
+		      	maze_pathGrid[i-1][j].south_walls=false;
 		      }
 		  }
 		}
 		
-		return mazeGrid;
+		return maze_pathGrid;
 	}
 
 
 	// place wall graphics on screen
-	function placeWallGraphics(scene, mazeGrid){
+	function placeWallGraphics(scene, maze_pathGrid){
 		var wallGeometry = new THREE.BoxGeometry( 1.059, 0.5 ,0.06);
 		const loader = new THREE.TextureLoader();
 		var wallMaterial = new THREE.MeshPhongMaterial({map: loader.load('./images/wall.jpg'),});
 
-		mazeGrid.forEach(function(mazeRow, rowCount){
-			mazeRow.forEach(function(mazeCell, colCount){
-				if(mazeCell.northWall)
+		maze_pathGrid.forEach(function(maze_pathRow, rowCount){
+			maze_pathRow.forEach(function(maze_pathCell, colCount){
+				if(maze_pathCell.north_walls)
 					placeWall(colCount, rowCount, 'n');
-				if(mazeCell.eastWall)
+				if(maze_pathCell.east_walls)
 					placeWall(colCount, rowCount, 'e');
-				if(mazeCell.southWall)
+				if(maze_pathCell.south_walls)
 					placeWall(colCount, rowCount, 's');
-				if(mazeCell.westWall)
+				if(maze_pathCell.west_walls)
 					placeWall(colCount, rowCount, 'w');
 				var floorGeometry=new THREE.PlaneGeometry(1,1,0.1);
 				const loader = new THREE.TextureLoader();
@@ -903,7 +903,7 @@
 	/***
 	change player input on key down
 ***/
-function doKeyDown(event){
+function key_down(event){
    var keynum;
 
    if(window.event){ //Browser is IE
@@ -933,7 +933,7 @@ function doKeyDown(event){
 /***
 	change player input on key up
 ***/
-function doKeyUp(event){
+function key_up(event){
    var keynum;
    
    if(window.event){ //Browser is IE
@@ -1347,9 +1347,9 @@ Inventory.prototype.dispose = function(){
 </script>
 
 </head>
-<body onload="game(10);" onkeydown="doKeyDown(event);" onkeyup="doKeyUp(event);">
+<body onload="game(10);" onkeydown="key_down(event);" onkeyup="key_up(event);">
 	<div id="score"><span>Score</span><p></p></div>
-	<canvas id="mazeCanvas" width=1300 height=600></canvas>
+	<canvas id="maze_pathCanvas" width=1300 height=600></canvas>
 	<div id="inventory"></div>
 </body>
 </html>
